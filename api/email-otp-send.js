@@ -73,6 +73,8 @@ export default async function handler(req, res) {
 
     // Send Real Email via Resend API (Primary) or GoDaddy SMTP (Fallback)
     let emailSent = false;
+    let resendErrorDetails = '';
+    let smtpErrorDetails = '';
     const RESEND_KEY = process.env.RESEND_API_KEY || "re_3UN4csqu_CbVqnFLTj5jL7RhQdKZxMKZG";
     const htmlBody = `
       <div style="max-width:480px;margin:0 auto;font-family:sans-serif;border:1px solid #e2e8f0;padding:24px;border-radius:12px;background:#ffffff;">
@@ -109,9 +111,11 @@ export default async function handler(req, res) {
         console.log('[Resend Serverless Success]: Dispatched via Resend API');
       } else {
         const errData = await resendResp.json().catch(() => ({}));
+        resendErrorDetails = errData.message || JSON.stringify(errData);
         console.warn('[Resend Serverless Warn]:', errData);
       }
     } catch (resendErr) {
+      resendErrorDetails = resendErr.message;
       console.warn('[Resend Serverless Catch]:', resendErr);
     }
 
@@ -138,6 +142,7 @@ export default async function handler(req, res) {
         emailSent = true;
         console.log('[GoDaddy SMTP Success]: Dispatched via secureserver.net');
       } catch (smtpErr) {
+        smtpErrorDetails = smtpErr.message;
         console.error('[GoDaddy SMTP Fail]:', smtpErr);
       }
     }
@@ -149,7 +154,7 @@ export default async function handler(req, res) {
       });
     }
 
-    throw new Error('All email delivery routes failed. Please try again.');
+    throw new Error(`All email delivery routes failed. Resend Error: ${resendErrorDetails || 'None'}. SMTP Error: ${smtpErrorDetails || 'None'}`);
 
   } catch (error) {
     console.error('[Vercel OTP Send Error]:', error);

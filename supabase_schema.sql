@@ -79,6 +79,12 @@ CREATE TABLE IF NOT EXISTS public.login_history (
   created_at timestamptz DEFAULT now()
 );
 
+-- 7. Platform Settings Table (For Google Reviews and other global variables)
+CREATE TABLE IF NOT EXISTS public.settings (
+  key text PRIMARY KEY,
+  value text NOT NULL
+);
+
 -- Enable RLS and create public policies for seamless web app communication
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.portfolio ENABLE ROW LEVEL SECURITY;
@@ -86,6 +92,7 @@ ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.designers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.city_addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.login_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 DO $$ BEGIN
   CREATE POLICY "Allow public all on services" ON public.services FOR ALL USING (true) WITH CHECK (true);
@@ -109,4 +116,8 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN
   CREATE POLICY "Allow public all on login_history" ON public.login_history FOR ALL USING (true) WITH CHECK (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Allow public all on settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;

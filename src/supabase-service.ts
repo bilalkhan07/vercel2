@@ -1718,10 +1718,6 @@ export const DQSupabase = {
       local = JSON.parse(localStorage.getItem('dq_google_reviews') || '[]');
     } catch (e) {}
 
-    if (local && local.length > 0) {
-      return local;
-    }
-
     try {
       const { data: setRow } = await supabase.from('settings').select('value').eq('key', 'google_reviews').maybeSingle();
       if (setRow && setRow.value) {
@@ -1732,7 +1728,9 @@ export const DQSupabase = {
           return parsed;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Failed to fetch reviews from Supabase:', e);
+    }
 
     return local;
   },
