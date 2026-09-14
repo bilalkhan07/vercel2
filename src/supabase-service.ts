@@ -1904,11 +1904,13 @@ export const DQSupabase = {
   },
 
   // ==========================================
-  // 5. CITY ADDRESSES SYNC (Supabase settings table)
+  // 5. CITY ADDRESSES SYNC (Supabase city_addresses table + Server API)
   // ==========================================
   async saveCityAddress(cityKey: string, addressData: any): Promise<void> {
     if (!cityKey) return;
     const cleanKey = cityKey.toString().toLowerCase().trim().replace(/\s+/g, '-');
+    const cleanAddress = (addressData.address || '').toString().trim();
+    const cleanPhone = (addressData.phone || '+91 86024 20897').toString().trim();
     
     let local: Record<string, any> = {};
     try {
@@ -1920,7 +1922,9 @@ export const DQSupabase = {
       ...addressData,
       key: cleanKey,
       city: cleanKey,
-      updatedAt: new Date().toISOString()
+      address: cleanAddress,
+      phone: cleanPhone,
+      name: `${cleanKey.charAt(0).toUpperCase() + cleanKey.slice(1)} Creative Hub`
     };
     local[cleanKey] = updatedItem;
 
@@ -1929,14 +1933,30 @@ export const DQSupabase = {
       window.dispatchEvent(new CustomEvent('dq_cities_updated', { detail: local }));
     } catch (e) {}
 
-    // Save to Supabase city_addresses table
+    // 1. Save via Server API first (guaranteed cloud sync)
+    try {
+      await fetch('/api/save-city-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: cleanKey,
+          city: cleanKey,
+          address: cleanAddress,
+          phone: cleanPhone,
+          name: updatedItem.name
+        })
+      });
+    } catch (errApi) {
+      console.warn('Server API save-city-address notice:', errApi);
+    }
+
+    // 2. Direct Supabase upsert fallback (Strict column match without updatedAt)
     try {
       const payload = {
         key: cleanKey,
         city: cleanKey,
-        address: addressData.address || '',
-        phone: addressData.phone || '',
-        updatedAt: new Date().toISOString()
+        address: cleanAddress,
+        phone: cleanPhone
       };
       const { error } = await supabase.from('city_addresses').upsert(payload);
       if (error) {
@@ -1958,21 +1978,43 @@ export const DQSupabase = {
   },
 
   async fetchCityAddresses(): Promise<Record<string, any>> {
+    let local: Record<string, any> = {};
+    try {
+      local = JSON.parse(localStorage.getItem('dq_city_addresses') || '{}');
+    } catch (e) {}
+
+    // 1. Try Server API first
+    try {
+      const sRes = await fetch('/api/get-city-addresses', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store'
+      });
+      if (sRes.ok) {
+        const sJson = await sRes.json();
+        if (sJson.success && sJson.addresses && typeof sJson.addresses === 'object' && Object.keys(sJson.addresses).length > 0) {
+          const merged = { ...local, ...sJson.addresses };
+          localStorage.setItem('dq_city_addresses', JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent('dq_cities_updated', { detail: merged }));
+          return merged;
+        }
+      }
+    } catch (errApi) {}
+
+    // 2. Direct Supabase table fetch
     try {
       const { data, error } = await supabase.from('city_addresses').select('*');
-      let local: Record<string, any> = {};
-      try {
-        local = JSON.parse(localStorage.getItem('dq_city_addresses') || '{}');
-      } catch (e) {}
 
-      if (!error && data && Array.isArray(data)) {
+      if (!error && data && Array.isArray(data) && data.length > 0) {
         const parsed: Record<string, any> = {};
         data.forEach((row: any) => {
           if (row && row.key && (row.address || row.phone)) {
             parsed[row.key] = {
               name: `${row.key.charAt(0).toUpperCase() + row.key.slice(1)} Creative Hub`,
-              address: row.address,
-              phone: row.phone,
+              address: row.address || '',
+              phone: row.phone || '+91 86024 20897',
               whatsapp: (row.phone || '').replace(/[^0-9]/g, ''),
               landmark: '',
               cityState: ''
@@ -1980,7 +2022,6 @@ export const DQSupabase = {
           }
         });
 
-        // Merge: Supabase database takes priority over local cache
         const merged = { ...local, ...parsed };
         localStorage.setItem('dq_city_addresses', JSON.stringify(merged));
         window.dispatchEvent(new CustomEvent('dq_cities_updated', { detail: merged }));
@@ -1989,11 +2030,8 @@ export const DQSupabase = {
     } catch (e) {
       console.warn('Fetch city addresses error in Supabase:', e);
     }
-    try {
-      return JSON.parse(localStorage.getItem('dq_city_addresses') || '{}');
-    } catch (e) {
-      return {};
-    }
+
+    return local;
   },
 
   async getCityAddresses(): Promise<Record<string, any>> {

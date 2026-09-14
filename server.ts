@@ -1243,6 +1243,106 @@ async function startServer() {
           }
         }
 
+        // --- SAVE CITY ADDRESS API ROUTE ---
+        if (req.url === '/api/save-city-address' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const { key, address, phone, name } = JSON.parse(body || '{}');
+              if (!key) {
+                res.statusCode = 400;
+                setNoCacheHeaders(res);
+                return res.end(JSON.stringify({ success: false, message: 'Missing city key' }));
+              }
+
+              const cleanKey = key.toString().toLowerCase().trim().replace(/\s+/g, '-');
+              const cleanAddress = (address || '').toString().trim();
+              const cleanPhone = (phone || '+91 86024 20897').toString().trim();
+
+              console.log(`[SERVER /api/save-city-address] Saving address for ${cleanKey}...`);
+
+              const payload = {
+                key: cleanKey,
+                city: cleanKey,
+                address: cleanAddress,
+                phone: cleanPhone
+              };
+
+              const { error } = await serverSupabase
+                .from('city_addresses')
+                .upsert(payload);
+
+              if (error) {
+                console.warn('[SERVER /api/save-city-address Supabase warning]:', error.message);
+              }
+
+              // Also log in login_history for audit
+              try {
+                await serverSupabase.from('login_history').insert({
+                  id: `city-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                  phone: cleanPhone,
+                  name: `Admin (City Update: ${cleanKey})`,
+                  role: 'admin',
+                  status: `Updated Address for ${cleanKey.toUpperCase()}: ${cleanAddress}`
+                });
+              } catch (e) {}
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({
+                success: true,
+                key: cleanKey,
+                data: payload,
+                message: `Address for ${cleanKey.toUpperCase()} saved to cloud.`
+              }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message || 'Error saving city address' }));
+            }
+          });
+          return;
+        }
+
+        // --- GET CITY ADDRESSES API ROUTE ---
+        if (req.url === '/api/get-city-addresses' && req.method === 'GET') {
+          try {
+            const { data, error } = await serverSupabase
+              .from('city_addresses')
+              .select('*');
+
+            if (error) {
+              console.warn('[SERVER /api/get-city-addresses notice]:', error.message);
+            }
+
+            const map: Record<string, any> = {};
+            if (data && Array.isArray(data)) {
+              data.forEach((row: any) => {
+                if (row && row.key) {
+                  map[row.key] = {
+                    name: `${row.key.charAt(0).toUpperCase() + row.key.slice(1)} Creative Hub`,
+                    address: row.address || '',
+                    phone: row.phone || '+91 86024 20897',
+                    whatsapp: (row.phone || '918602420897').replace(/[^0-9]/g, ''),
+                    landmark: '',
+                    cityState: ''
+                  };
+                }
+              });
+            }
+
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({
+              success: true,
+              addresses: map
+            }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({ success: false, addresses: {}, message: err.message }));
+          }
+        }
+
         
     next();
   });

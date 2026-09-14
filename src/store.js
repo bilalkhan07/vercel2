@@ -322,6 +322,21 @@ function deleteReviewCloud(itemId) {
 
 function syncCityCloud(cityKey, addressData) {
   if (typeof window === 'undefined' || !cityKey) return;
+  // Direct Server API call
+  try {
+    fetch('/api/save-city-address', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: cityKey,
+        city: cityKey,
+        address: addressData.address || '',
+        phone: addressData.phone || '+91 86024 20897',
+        name: addressData.name || ''
+      })
+    }).catch(() => {});
+  } catch(e) {}
+
   const db = getCloudDb();
   if (db && typeof db.saveCityAddress === 'function') {
     db.saveCityAddress(cityKey, addressData).catch(e => console.warn('City cloud sync error:', e));
@@ -960,7 +975,13 @@ window.DQStore = {
       if (stored !== null) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          return this.deduplicateJobs(parsed);
+          let deleted = [];
+          try { deleted = JSON.parse(localStorage.getItem('dq_deleted_jobs') || '[]'); } catch(e) {}
+          const delSet = new Set(deleted.map(d => this.normalizeJobId(d)));
+          return this.deduplicateJobs(parsed).filter(j => {
+            const id = this.normalizeJobId(j.id || j.jobId);
+            return id && !delSet.has(id) && j.status !== 'Deleted';
+          });
         }
       }
     } catch (e) {}
@@ -999,11 +1020,24 @@ window.DQStore = {
     });
     localStorage.setItem('dq_live_jobs', JSON.stringify(jobs));
 
-    // 3. Dispatch to Supabase / Cloud if present
+    // 3. Dispatch to backend API
+    try {
+      fetch('/api/delete-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: normId })
+      }).catch(() => {});
+    } catch(e) {}
+
+    // 4. Dispatch to Supabase / Cloud if present
     const cloudDb = getCloudDb();
     if (cloudDb && typeof cloudDb.deleteJob === 'function') {
       cloudDb.deleteJob(normId);
     }
+
+    try {
+      window.dispatchEvent(new CustomEvent('dq_jobs_updated', { detail: jobs }));
+    } catch(e) {}
 
     return jobs.length < initialLen;
   },

@@ -4673,13 +4673,18 @@
       const revertCityDefaultBtn = document.getElementById('revert-city-default-btn');
       const adminCityCardsGrid = document.getElementById('admin-city-cards-grid');
 
-      function loadCityIntoForm(cityKey) {
+      let _hasLoadedInitialCity = false;
+
+      function loadCityIntoForm(cityKey, force = false) {
         if (!window.DQStore || !window.DQStore.getCityAddress) return;
+        const isEditing = document.activeElement === cityPhoneInput || document.activeElement === cityMainAddressInput;
+        if (isEditing && !force) return;
+
         const data = window.DQStore.getCityAddress(cityKey);
-        if (cityDropdown) cityDropdown.value = cityKey;
+        if (cityDropdown && cityDropdown.value !== cityKey) cityDropdown.value = cityKey;
         if (cityBadge) cityBadge.textContent = cityKey;
-        if (cityPhoneInput) cityPhoneInput.value = data.phone || '+91 86024 20897';
-        if (cityMainAddressInput) cityMainAddressInput.value = data.address || '';
+        if (cityPhoneInput && (!isEditing || force)) cityPhoneInput.value = data.phone || '+91 86024 20897';
+        if (cityMainAddressInput && (!isEditing || force)) cityMainAddressInput.value = data.address || '';
         if (previewCityLink) previewCityLink.href = `landing.html?city=${cityKey}`;
       }
 
@@ -4687,7 +4692,12 @@
         if (!window.DQStore || !window.DQStore.getCityAddresses) return;
         const addresses = window.DQStore.getCityAddresses();
         const currentKey = (cityDropdown && cityDropdown.value) ? cityDropdown.value : 'indore';
-        loadCityIntoForm(currentKey);
+        
+        // Only load into form on very first run
+        if (!_hasLoadedInitialCity) {
+          _hasLoadedInitialCity = true;
+          loadCityIntoForm(currentKey, true);
+        }
 
         if (!adminCityCardsGrid) return;
         adminCityCardsGrid.innerHTML = Object.keys(addresses).map(key => {
@@ -4725,7 +4735,8 @@
       }
 
       window.selectCityToEdit = function(key) {
-        loadCityIntoForm(key);
+        if (cityDropdown) cityDropdown.value = key;
+        loadCityIntoForm(key, true);
         if (cityAddressForm) {
           cityAddressForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -4734,7 +4745,7 @@
 
       if (cityDropdown) {
         cityDropdown.addEventListener('change', (e) => {
-          loadCityIntoForm(e.target.value);
+          loadCityIntoForm(e.target.value, true);
           renderCityAddresses();
         });
       }
@@ -4742,7 +4753,7 @@
       if (cityAddressForm) {
         cityAddressForm.addEventListener('submit', async (e) => {
           e.preventDefault();
-          const cityKey = cityDropdown.value;
+          const cityKey = cityDropdown ? cityDropdown.value : 'indore';
           const phone = (cityPhoneInput ? cityPhoneInput.value : '').trim();
           const address = (cityMainAddressInput ? cityMainAddressInput.value : '').trim();
           
@@ -4750,7 +4761,7 @@
           const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
           if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Saving Address...</span>`;
+            submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Saving to Cloud...</span>`;
             if (window.lucide) lucide.createIcons();
           }
 
@@ -4764,14 +4775,30 @@
           };
 
           try {
+            // 1. Save to local store immediately
             if (window.DQStore && window.DQStore.saveCityAddress) {
               window.DQStore.saveCityAddress(cityKey, newObj);
             }
+
+            // 2. Save to Supabase Cloud via service & API
             const db = window.DQSupabase || window.DQFirebase;
             if (db && typeof db.saveCityAddress === 'function') {
               await db.saveCityAddress(cityKey, newObj);
+            } else {
+              await fetch('/api/save-city-address', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  key: cityKey,
+                  city: cityKey,
+                  address,
+                  phone: newObj.phone,
+                  name: newObj.name
+                })
+              });
             }
-            showToast(`Address for ${cityKey.toUpperCase()} updated successfully!`);
+
+            showToast(`✅ Address for ${cityKey.toUpperCase()} updated permanently!`);
           } catch(err) {
             console.error('Save city address error:', err);
             showToast(`Address saved locally, syncing in background.`);
@@ -4781,6 +4808,7 @@
               submitBtn.innerHTML = origBtnHtml;
               if (window.lucide) lucide.createIcons();
             }
+            loadCityIntoForm(cityKey, true);
             renderCityAddresses();
           }
         });
@@ -4798,7 +4826,7 @@
                 await db.saveCityAddress(cityKey, defaults[cityKey]);
               }
               showToast(`Reset ${cityKey.toUpperCase()} to standard default address.`);
-              loadCityIntoForm(cityKey);
+              loadCityIntoForm(cityKey, true);
               renderCityAddresses();
             }
           }

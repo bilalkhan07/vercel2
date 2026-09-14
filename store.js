@@ -322,6 +322,21 @@ function deleteReviewCloud(itemId) {
 
 function syncCityCloud(cityKey, addressData) {
   if (typeof window === 'undefined' || !cityKey) return;
+  // Direct Server API call
+  try {
+    fetch('/api/save-city-address', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: cityKey,
+        city: cityKey,
+        address: addressData.address || '',
+        phone: addressData.phone || '+91 86024 20897',
+        name: addressData.name || ''
+      })
+    }).catch(() => {});
+  } catch(e) {}
+
   const db = getCloudDb();
   if (db && typeof db.saveCityAddress === 'function') {
     db.saveCityAddress(cityKey, addressData).catch(e => console.warn('City cloud sync error:', e));
