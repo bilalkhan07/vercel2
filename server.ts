@@ -14,6 +14,7 @@ const emailOtpStore = new Map<string, { code: string; expiresAt: number }>();
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://icdawztbuezziqfvswhx.supabase.co";
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww";
+const serverDeletedJobIds = new Set<string>();
 const serverSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const smtpUser = process.env.SMTP_USER || 'alerts@designquixo.in';
@@ -414,6 +415,9 @@ async function startServer() {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
     if (req.method === 'OPTIONS') {
       res.statusCode = 200;
@@ -1053,6 +1057,14 @@ async function startServer() {
           return;
         }
 
+        // Helper to set no-cache headers
+        const setNoCacheHeaders = (resObj: any) => {
+          resObj.setHeader('Content-Type', 'application/json');
+          resObj.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+          resObj.setHeader('Pragma', 'no-cache');
+          resObj.setHeader('Expires', '0');
+        };
+
         // --- GET DESIGNERS API ROUTE ---
         if (req.url === '/api/get-designers' && req.method === 'GET') {
           try {
@@ -1064,15 +1076,170 @@ async function startServer() {
               console.warn('[SERVER /api/get-designers notice]:', error.message);
             }
 
-            res.setHeader('Content-Type', 'application/json');
+            setNoCacheHeaders(res);
             return res.end(JSON.stringify({ 
               success: true, 
               designers: Array.isArray(data) ? data : [] 
             }));
           } catch (err: any) {
             res.statusCode = 500;
-            res.setHeader('Content-Type', 'application/json');
+            setNoCacheHeaders(res);
             return res.end(JSON.stringify({ success: false, designers: [], message: err.message }));
+          }
+        }
+
+        // --- DELETE JOB API ROUTE (PERMANENT CACHE-FREE DELETION) ---
+        if (req.url === '/api/delete-job' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const { id } = JSON.parse(body || '{}');
+              if (!id) {
+                res.statusCode = 400;
+                setNoCacheHeaders(res);
+                return res.end(JSON.stringify({ success: false, message: 'Missing job id' }));
+              }
+
+              const rawId = id.toString().trim();
+              const bareId = rawId.replace(/^(DQ[-_]?)+/i, '');
+              const cleanId = `DQ-${bareId}`;
+
+              console.log(`[SERVER /api/delete-job] Permanently deleting Job #${cleanId} from Supabase...`);
+
+              // Track in server deletion memory blacklist immediately
+              serverDeletedJobIds.add(cleanId);
+              serverDeletedJobIds.add(bareId);
+              serverDeletedJobIds.add(`DQ${bareId}`);
+              serverDeletedJobIds.add(rawId);
+
+              // Delete from Supabase jobs table
+              const delTasks = [
+                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', cleanId)),
+                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', bareId)),
+                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', `DQ${bareId}`)),
+                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', rawId)),
+                Promise.resolve(serverSupabase.from('jobs').update({ status: 'Deleted' }).eq('id', cleanId)),
+                Promise.resolve(serverSupabase.from('jobs').update({ status: 'Deleted' }).eq('id', bareId))
+              ];
+
+              await Promise.allSettled(delTasks);
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({
+                success: true,
+                deletedId: cleanId,
+                message: `Job #${cleanId} deleted permanently from cloud storage.`
+              }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message || 'Error deleting job' }));
+            }
+          });
+          return;
+        }
+
+        // --- GET JOBS API ROUTE (LIVE DATABASE SOURCE OF TRUTH) ---
+        if (req.url === '/api/get-jobs' && req.method === 'GET') {
+          try {
+            const { data, error } = await serverSupabase
+              .from('jobs')
+              .select('*')
+              .neq('status', 'Deleted')
+              .order('createdat', { ascending: false });
+
+            if (error) {
+              console.warn('[SERVER /api/get-jobs notice]:', error.message);
+            }
+
+            const rawList = Array.isArray(data) ? data : [];
+            const activeJobs = rawList.filter(j => {
+              if (!j) return false;
+              if (j.status === 'Deleted') return false;
+              const jId = (j.id || '').toString().trim();
+              const jBare = jId.replace(/^(DQ[-_]?)+/i, '');
+              const jClean = `DQ-${jBare}`;
+              return !serverDeletedJobIds.has(jId) && !serverDeletedJobIds.has(jClean) && !serverDeletedJobIds.has(jBare);
+            });
+
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({
+              success: true,
+              jobs: activeJobs
+            }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({ success: false, jobs: [], message: err.message }));
+          }
+        }
+
+        // --- SAVE JOB API ROUTE (AUTHORITATIVE CLOUD PERSISTENCE) ---
+        if (req.url === '/api/save-job' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const job = JSON.parse(body || '{}');
+              const rawId = (job.id || '').toString().trim();
+              const bareId = rawId.replace(/^(DQ[-_]?)+/i, '');
+              const cleanId = bareId ? `DQ-${bareId}` : `DQ-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+              // Remove from server deletion set if re-created
+              serverDeletedJobIds.delete(cleanId);
+              serverDeletedJobIds.delete(bareId);
+              serverDeletedJobIds.delete(`DQ${bareId}`);
+
+              const row = {
+                id: cleanId,
+                service: job.service || 'Graphic Design',
+                project: job.project || job.projectName || 'Design Request',
+                price: Number(job.price) || 399,
+                brief: job.brief || '',
+                phone: job.phone || job.whatsapp || '',
+                whatsapp: job.whatsapp || job.phone || '',
+                ratio: job.ratio || 'Square (1:1)',
+                referenceimage: job.referenceImage || job.referenceimage || job.image || '',
+                status: job.status || 'Pending',
+                acceptedby: Array.isArray(job.acceptedBy) ? job.acceptedBy : [],
+                completed: !!job.completed,
+                completedat: job.completedAt || job.completedat || null,
+                createdat: job.createdAt || job.createdat || new Date().toISOString(),
+                time: job.time || 'Just now'
+              };
+
+              const { error } = await serverSupabase.from('jobs').upsert(row);
+              if (error) {
+                console.warn('[SERVER /api/save-job Supabase notice]:', error.message);
+              }
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({
+                success: true,
+                job: row,
+                message: `Job #${cleanId} saved to cloud.`
+              }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message || 'Error saving job' }));
+            }
+          });
+          return;
+        }
+
+        // --- CLEAR ALL JOBS API ROUTE ---
+        if (req.url === '/api/clear-all-jobs' && req.method === 'POST') {
+          try {
+            console.log('[SERVER /api/clear-all-jobs] Clearing all jobs from Supabase...');
+            await serverSupabase.from('jobs').delete().neq('id', 'CLEAR_ALL_SENTINEL');
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({ success: true, message: 'All jobs cleared successfully' }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({ success: false, message: err.message }));
           }
         }
 

@@ -1463,9 +1463,24 @@
             liveJobs = JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
           } catch(e) { liveJobs = []; }
         }
+
+        // Strict filter against dq_deleted_jobs
+        let deletedList = [];
+        try { deletedList = JSON.parse(localStorage.getItem('dq_deleted_jobs') || '[]'); } catch(e) {}
+        const deletedSet = new Set(deletedList.map(d => (window.DQStore && window.DQStore.normalizeJobId) ? window.DQStore.normalizeJobId(d) : d.toString().trim().toUpperCase()));
+
         if (window.DQStore && typeof window.DQStore.deduplicateJobs === 'function') {
           liveJobs = window.DQStore.deduplicateJobs(liveJobs);
         }
+
+        liveJobs = liveJobs.filter(j => {
+          if (!j) return false;
+          if ((j.status || '').toLowerCase() === 'deleted') return false;
+          const rawId = (j.id || j.jobId || '').toString().trim();
+          const normId = (window.DQStore && window.DQStore.normalizeJobId) ? window.DQStore.normalizeJobId(rawId) : rawId.toUpperCase();
+          const bareId = normId.replace(/^DQ-/, '');
+          return !deletedSet.has(normId) && !deletedSet.has(bareId) && !deletedSet.has(rawId.toUpperCase());
+        });
 
         const availableJobs = [];
         const myAcceptedJobs = [];
@@ -3283,5 +3298,7 @@
         </div>
       </div>
     </div>
+    <!-- Global Cookie Banner & Compliance -->
+    <script src="cookie-banner.js"></script>
   </body>
 </html>

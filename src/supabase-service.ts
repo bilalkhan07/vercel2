@@ -413,6 +413,13 @@ export const DQSupabase = {
     };
 
     try {
+      // Backend server persistence
+      fetch('/api/save-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(normalizedJob)
+      }).catch(() => {});
+
       // Direct lowercase upsert to avoid schema caching issues or multi-part uploads
       const { error } = await supabase.from('jobs').upsert(lowercasePayload);
       if (error) {
@@ -659,7 +666,16 @@ export const DQSupabase = {
       safeDispatch('dq_jobs_updated', localJobs);
     } catch (e) {}
 
-    // 2. Supabase Delete via SDK + REST API
+    // 2. Server API Delete (Guaranteed backend deletion)
+    try {
+      await fetch('/api/delete-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: cleanId })
+      });
+    } catch (e) {}
+
+    // 3. Supabase Direct Delete via SDK + REST API
     try {
       await Promise.allSettled([
         supabase.from('jobs').update({ status: 'Deleted' }).or(`id.eq.${cleanId},id.eq.${bareId}`),
@@ -686,6 +702,10 @@ export const DQSupabase = {
     } catch (e) {}
 
     try {
+      await fetch('/api/clear-all-jobs', { method: 'POST' });
+    } catch (e) {}
+
+    try {
       const { data } = await supabase.from('jobs').select('id');
       if (Array.isArray(data) && data.length > 0) {
         const ids = data.map((d: any) => d.id);
@@ -699,28 +719,46 @@ export const DQSupabase = {
 
   async fetchJobs(): Promise<DQJob[]> {
     try {
-      let data: any[] = [];
+      let data: any[] | null = null;
       let error = null;
 
-      // Direct REST API fetch to ensure cache-busting
+      // 1. Try Server API first (guaranteed live, non-cached source of truth)
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs?select=*`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        const sRes = await fetch('/api/get-jobs', {
+          headers: { 
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
           },
           cache: 'no-store'
         });
-        if (res.ok) {
-          data = await res.json();
-        } else {
-          throw new Error('REST API returned ' + res.status);
+        if (sRes.ok) {
+          const sJson = await sRes.json();
+          if (sJson && sJson.success && Array.isArray(sJson.jobs)) {
+            data = sJson.jobs;
+          }
         }
-      } catch (err) {
-        console.warn('Direct REST jobs fetch failed, falling back to SDK:', err);
-        const fallback = await supabase.from('jobs').select('*');
-        data = fallback.data || [];
-        error = fallback.error;
+      } catch (err) {}
+
+      // 2. Direct REST API fetch fallback if server API was unreachable
+      if (data === null) {
+        try {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs?select=*&status=neq.Deleted&order=createdat.desc`, {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            },
+            cache: 'no-store'
+          });
+          if (res.ok) {
+            data = await res.json();
+          }
+        } catch (err) {
+          const fallback = await supabase.from('jobs').select('*').neq('status', 'Deleted');
+          data = fallback.data || [];
+          error = fallback.error;
+        }
       }
 
       if (!error && Array.isArray(data)) {
@@ -734,7 +772,7 @@ export const DQSupabase = {
         let payoutMap: Record<string, string> = {};
         try { payoutMap = JSON.parse(safeStorage.getItem('dq_payout_records') || '{}'); } catch (e) {}
 
-        // Build local jobs map for reference image fallback & offline preservation
+        // Build local jobs map for reference image fallback only
         const localJobsMap = new Map<string, any>();
         try {
           const lj = JSON.parse(safeStorage.getItem('dq_live_jobs') || '[]');
@@ -745,7 +783,7 @@ export const DQSupabase = {
           }
         } catch (e) {}
 
-        // Authoritative Supabase data with smart local state retention
+        // Authoritative Database data - strictly what exists in DB
         for (const sj of data) {
           if (!sj) continue;
           if (sj.status === 'Deleted') continue; // Skip softly deleted jobs
@@ -791,10 +829,13 @@ export const DQSupabase = {
           }
         }
 
-        // Include any local jobs that were created offline or pending Supabase insertion
+        // Only include local jobs if explicitly flagged as pending submission within 15 seconds
         localJobsMap.forEach((localJob, localId) => {
           if (!validJobs.some(j => j.id === localId) && !deletedNormSet.has(localId) && localId !== 'DQ-8492' && localId !== 'DQ-7319') {
-            validJobs.push(localJob);
+            const isRecentPending = localJob.pendingCloudSync === true && (Date.now() - new Date(localJob.createdAt || 0).getTime() < 15000);
+            if (isRecentPending) {
+              validJobs.push(localJob);
+            }
           }
         });
 
@@ -805,14 +846,9 @@ export const DQSupabase = {
           return tB.localeCompare(tA);
         });
 
-        // Compare stringified versions to prevent unnecessary DOM re-renders
-        const existingLiveJobsStr = safeStorage.getItem('dq_live_jobs') || '[]';
-        const newLiveJobsStr = JSON.stringify(validJobs);
-
-        if (existingLiveJobsStr !== newLiveJobsStr) {
-          safeStorage.setItem('dq_live_jobs', newLiveJobsStr);
-          safeDispatch('dq_jobs_updated', validJobs);
-        }
+        // Write authoritative live data to storage (cleans out any deleted jobs)
+        safeStorage.setItem('dq_live_jobs', JSON.stringify(validJobs));
+        safeDispatch('dq_jobs_updated', validJobs);
 
         return validJobs;
       }
