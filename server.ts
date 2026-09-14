@@ -94,7 +94,7 @@ interface SendMailOptions {
 
 async function sendMailWithFallback(options: SendMailOptions): Promise<{ success: boolean; via: string; error?: string }> {
   // 0. Try Resend API (Verified Domain alerts@designquixo.in)
-  const resendKey = process.env.RESEND_API_KEY || "re_3UN4csqu_CbVqnFLTj5jL7RhQdKZxMKZG";
+  const resendKey = process.env.RESEND_API_KEY || "re_GAyBam4v_LH1vDp9iDC2FUEYW5ma3LupQ";
   try {
     const resendResp = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -113,9 +113,12 @@ async function sendMailWithFallback(options: SendMailOptions): Promise<{ success
     if (resendResp.ok) {
       console.log(`[RESEND API DELIVERED] Dispatched to: ${options.to} from alerts@designquixo.in`);
       return { success: true, via: 'resend-api' };
+    } else {
+      const errData = await resendResp.json().catch(() => ({}));
+      console.error('[SERVER RESEND API FAIL]:', errData);
     }
   } catch (e: any) {
-    console.warn('[Resend API fetch notice]:', e?.message);
+    console.error('[Resend API fetch error]:', e?.message);
   }
 
   initMailPools();

@@ -1864,8 +1864,8 @@ export const DQSupabase = {
           }
         });
 
-        // Merge: local updates take priority so admin changes reflect immediately
-        const merged = { ...parsed, ...local };
+        // Merge: Supabase database takes priority over local cache
+        const merged = { ...local, ...parsed };
         localStorage.setItem('dq_city_addresses', JSON.stringify(merged));
         window.dispatchEvent(new CustomEvent('dq_cities_updated', { detail: merged }));
         return merged;

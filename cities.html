@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Indian Cities Directory — 30-Min Graphic Design Across India | Design Quixo</title>
+    <title>Indian Cities Directory - 30-Min Graphic Design Across India | Design Quixo</title>
     <meta name="description" content="Local on-demand 30-minute graphic design and logo design services across 16+ Indian cities including Indore, Bhopal, Bangalore, Mumbai, Delhi NCR, Pune, Hyderabad, and Chennai." />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="shortcut icon" type="image/png" href="favicon.png" />
@@ -49,6 +49,8 @@
     </script>
     <link rel="stylesheet" href="src/index.css" />
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="store.js"></script>
+    <script type="module" src="/src/supabase-service.ts"></script>
   </head>
   <body class="bg-white text-slate-800 antialiased min-h-screen flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
     
@@ -869,6 +871,18 @@
         if (e.key === 'dq_city_addresses') updateDynamicCityAddresses();
       });
       window.addEventListener('dq_cities_updated', updateDynamicCityAddresses);
+
+      async function syncCityFromSupabase() {
+        const db = window.DQSupabase || window.DQFirebase;
+        if (db && typeof db.fetchCityAddresses === 'function') {
+          try {
+            await db.fetchCityAddresses();
+            updateDynamicCityAddresses();
+          } catch(e) {}
+        }
+      }
+      setTimeout(syncCityFromSupabase, 300);
+      setTimeout(syncCityFromSupabase, 1500);
 
       searchGoBtn.addEventListener('click', handleSearchSubmit);
       searchInput.addEventListener('keypress', (e) => {

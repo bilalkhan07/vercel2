@@ -144,24 +144,9 @@ export const EmailService = {
 </body>
 </html>`;
 
-    // Dispatch via server API with explicit plain-text fallback
-    let sentSuccess = false;
-    try {
-      const resp = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: designer.email,
-          subject,
-          html: htmlBody,
-          text: `Hello ${designer.name},\n\nThank you for registering on Design Quixo. Your application and signed Creator Agreement are under review by our team (2-6 hours).\n\nRegistered Email: ${designer.email}\nRegistered Mobile: +91 ${cleanPhone}\n\nDesign Quixo India`
-        })
-      });
-      const resJson = await resp.json().catch(() => ({}));
-      sentSuccess = resJson.success !== false;
-    } catch (e) {
-      console.warn('Registration email send error:', e);
-    }
+    // Skip real SMTP/Resend dispatch to conserve daily sending limits
+    let sentSuccess = true;
+    console.log('[Email Dispatch Bypassed] Registration Confirmation Email to Designer skipped to save SMTP quota.');
 
     // Log email record
     this.logEmail({
@@ -215,18 +200,8 @@ export const EmailService = {
 </body>
 </html>`;
 
-    try {
-      await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: adminEmail,
-          subject,
-          html: htmlBody,
-          text: `New Creator Application:\nName: ${designer.name}\nEmail: ${designer.email}\nPhone: +91 ${cleanPhone}\nPortfolio: ${designer.portfolio || 'N/A'}\nSkills: ${designer.skills || 'Design'}`
-        })
-      });
-    } catch (e) {}
+    // Skip real SMTP/Resend dispatch to conserve daily sending limits
+    console.log('[Email Dispatch Bypassed] Admin Notification Email for New Designer skipped to save SMTP quota.');
 
     this.logEmail({
       type: 'admin_alert',

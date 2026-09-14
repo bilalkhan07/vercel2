@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Design Quixo — India's Fastest Manual (No-AI) Graphic Design Platform</title>
+    <title>Design Quixo - India's Fastest Manual (No-AI) Graphic Design Platform</title>
     <meta name="description" content="Get custom graphic designs crafted by verified human designers delivered in 30-60 minutes. Direct WhatsApp collaboration." />
-    <meta property="og:title" content="Design Quixo — India's Fastest Manual Graphic Design Service" />
+    <meta property="og:title" content="Design Quixo - India's Fastest Manual Graphic Design Service" />
     <meta property="og:description" content="100% human-crafted graphic designs delivered in 30 to 60 minutes. Zero AI slop, pixel-perfect precision." />
     <meta property="og:type" content="website" />
     <link rel="icon" type="image/png" href="favicon.png" />
@@ -1067,6 +1067,15 @@
       window.addEventListener('dq_reviews_updated', renderGoogleReviews);
       setTimeout(renderGoogleReviews, 200);
       setTimeout(renderGoogleReviews, 1000);
+
+      // Subscribe to real-time database changes for reviews
+      function initRealtimeReviews() {
+        const db = window.DQSupabase || window.DQFirebase;
+        if (db && typeof db.subscribeReviews === 'function') {
+          db.subscribeReviews(renderGoogleReviews);
+        }
+      }
+      setTimeout(initRealtimeReviews, 500);
     </script>
   </body>
 </html>

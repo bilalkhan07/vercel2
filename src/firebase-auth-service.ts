@@ -382,6 +382,13 @@ export const DQFirebaseAuth = {
               message: '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
             };
           }
+        } else if (resp.status !== 404) {
+          const errData = await resp.json().catch(() => ({}));
+          const errMsg = errData.message || 'Server error while sending OTP';
+          return {
+            success: false,
+            message: `[Email Service Error]: ${errMsg}`
+          };
         }
       } catch (e: any) {
         console.warn('[Local API Notice]:', e?.message);

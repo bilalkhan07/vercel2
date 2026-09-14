@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title id="page-title">Graphic Designer in Indore — 30-Min Fast Human Graphic Design | Design Quixo</title>
+    <title id="page-title">Graphic Designer in Indore - 30-Min Fast Human Graphic Design | Design Quixo</title>
     <meta id="page-desc" name="description" content="Looking for a top graphic designer or logo designer in Indore? Get 100% human manual designs delivered in 30-60 minutes on WhatsApp. Serving Vijay Nagar, Palasia, Rajwada & all Indore businesses." />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="shortcut icon" type="image/png" href="favicon.png" />
@@ -749,7 +749,7 @@
       const serviceTitle = serviceDisplayMap[serviceKey] || 'Graphic Designer';
 
       // Update Dynamic DOM Elements
-      document.title = `Top ${serviceTitle} in ${cityName} — 30-Min Fast Human Delivery | Design Quixo`;
+      document.title = `Top ${serviceTitle} in ${cityName} - 30-Min Fast Human Delivery | Design Quixo`;
       document.getElementById('page-desc').setAttribute('content', `Looking for the best ${serviceTitle} in ${cityName}? Get 100% human manual designs delivered in 30-60 minutes on WhatsApp. Serving local businesses across ${cityName}.`);
 
       document.getElementById('crumb-city').textContent = cityName;
@@ -1165,6 +1165,15 @@
         if (e.key === 'dq_city_addresses') populateCityOfficeInfo();
       });
       window.addEventListener('dq_cities_updated', populateCityOfficeInfo);
+
+      // Subscribe to real-time database changes for reviews
+      function initRealtimeReviews() {
+        const db = window.DQSupabase || window.DQFirebase;
+        if (db && typeof db.subscribeReviews === 'function') {
+          db.subscribeReviews(renderCityReviews);
+        }
+      }
+      setTimeout(initRealtimeReviews, 500);
 
       async function syncCityFromSupabase() {
         const db = window.DQSupabase || window.DQFirebase;

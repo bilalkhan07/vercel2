@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Creator & Admin Portal Login — Design Quixo India</title>
+    <title>Creator & Admin Portal Login - Design Quixo India</title>
     <meta name="description" content="Secure authentication gateway for Design Quixo verified creators, operations support, and platform admins." />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="shortcut icon" type="image/png" href="favicon.png" />
@@ -954,6 +954,15 @@
                 message: '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
               };
             }
+          } else if (resp.status !== 404) {
+            // Server was found but failed to send the email (e.g. SMTP or Resend issue).
+            // Show the exact error reason from the response so the user can easily debug!
+            const errData = await resp.json().catch(() => ({}));
+            const errMsg = errData.message || 'Server error while sending OTP';
+            return {
+              success: false,
+              message: `[Email Service Error]: ${errMsg}`
+            };
           }
         } catch (e) {
           console.warn('[Local API Notice]:', e);
