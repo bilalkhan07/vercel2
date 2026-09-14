@@ -189,7 +189,7 @@ const DEFAULT_REVIEWS = [
     city: 'Mumbai',
     rating: 5,
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    review: 'Best experience for quick turnarounds. No agency drama, no AI rubbish. Real human vector art files with full commercial license. Highly recommended for all businesses.',
+    review: 'Best experience for quick turnarounds. No agency drama, prompt delivery. Real human vector art files with full commercial license. Highly recommended for all businesses.',
     verified: true,
     date: '5 days ago'
   },

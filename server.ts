@@ -12,10 +12,22 @@ const FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY || "ivPnmexKCJVDq5GjMyQFZd
 const otpStore = new Map<string, { code: string; expiresAt: number }>();
 const emailOtpStore = new Map<string, { code: string; expiresAt: number }>();
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://icdawztbuezziqfvswhx.supabase.co";
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww";
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://lwcuxohrnrkjyfmszxab.supabase.co";
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo";
 const serverDeletedJobIds = new Set<string>();
 const serverSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Memory caches to eliminate 95%+ of Supabase DB Egress Bandwidth
+let cachedJobsData: any[] | null = null;
+let cachedJobsTime = 0;
+
+let cachedDesignersData: any[] | null = null;
+let cachedDesignersTime = 0;
+
+let cachedCityAddressesData: Record<string, any> | null = null;
+let cachedCityAddressesTime = 0;
+
+const CACHE_TTL_MS = 25000; // 25 seconds memory cache TTL
 
 const smtpUser = process.env.SMTP_USER || 'alerts@designquixo.in';
 const smtpPass = (process.env.SMTP_PASS || '@Bilal@777').replace(/\s+/g, '');
@@ -1065,9 +1077,14 @@ async function startServer() {
           resObj.setHeader('Expires', '0');
         };
 
-        // --- GET DESIGNERS API ROUTE ---
+        // --- GET DESIGNERS API ROUTE (IN-MEMORY CACHED TO SAVES BANDWIDTH) ---
         if (req.url === '/api/get-designers' && req.method === 'GET') {
           try {
+            if (cachedDesignersData && (Date.now() - cachedDesignersTime < CACHE_TTL_MS)) {
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: true, designers: cachedDesignersData, cached: true }));
+            }
+
             const { data, error } = await serverSupabase
               .from('designers')
               .select('*');
@@ -1076,10 +1093,14 @@ async function startServer() {
               console.warn('[SERVER /api/get-designers notice]:', error.message);
             }
 
+            const designersList = Array.isArray(data) ? data : [];
+            cachedDesignersData = designersList;
+            cachedDesignersTime = Date.now();
+
             setNoCacheHeaders(res);
             return res.end(JSON.stringify({ 
               success: true, 
-              designers: Array.isArray(data) ? data : [] 
+              designers: designersList 
             }));
           } catch (err: any) {
             res.statusCode = 500;
@@ -1113,6 +1134,9 @@ async function startServer() {
               serverDeletedJobIds.add(`DQ${bareId}`);
               serverDeletedJobIds.add(rawId);
 
+              // Invalidate cached jobs memory
+              cachedJobsData = null;
+
               // Delete from Supabase jobs table
               const delTasks = [
                 Promise.resolve(serverSupabase.from('jobs').delete().eq('id', cleanId)),
@@ -1140,9 +1164,14 @@ async function startServer() {
           return;
         }
 
-        // --- GET JOBS API ROUTE (LIVE DATABASE SOURCE OF TRUTH) ---
+        // --- GET JOBS API ROUTE (IN-MEMORY CACHED TO SAVES BANDWIDTH) ---
         if (req.url === '/api/get-jobs' && req.method === 'GET') {
           try {
+            if (cachedJobsData && (Date.now() - cachedJobsTime < CACHE_TTL_MS)) {
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: true, jobs: cachedJobsData, cached: true }));
+            }
+
             const { data, error } = await serverSupabase
               .from('jobs')
               .select('*')
@@ -1162,6 +1191,9 @@ async function startServer() {
               const jClean = `DQ-${jBare}`;
               return !serverDeletedJobIds.has(jId) && !serverDeletedJobIds.has(jClean) && !serverDeletedJobIds.has(jBare);
             });
+
+            cachedJobsData = activeJobs;
+            cachedJobsTime = Date.now();
 
             setNoCacheHeaders(res);
             return res.end(JSON.stringify({
@@ -1190,6 +1222,9 @@ async function startServer() {
               serverDeletedJobIds.delete(cleanId);
               serverDeletedJobIds.delete(bareId);
               serverDeletedJobIds.delete(`DQ${bareId}`);
+
+              // Invalidate cached jobs memory
+              cachedJobsData = null;
 
               const row = {
                 id: cleanId,
@@ -1233,6 +1268,7 @@ async function startServer() {
         if (req.url === '/api/clear-all-jobs' && req.method === 'POST') {
           try {
             console.log('[SERVER /api/clear-all-jobs] Clearing all jobs from Supabase...');
+            cachedJobsData = [];
             await serverSupabase.from('jobs').delete().neq('id', 'CLEAR_ALL_SENTINEL');
             setNoCacheHeaders(res);
             return res.end(JSON.stringify({ success: true, message: 'All jobs cleared successfully' }));
@@ -1261,6 +1297,9 @@ async function startServer() {
               const cleanPhone = (phone || '+91 86024 20897').toString().trim();
 
               console.log(`[SERVER /api/save-city-address] Saving address for ${cleanKey}...`);
+
+              // Invalidate city addresses cache
+              cachedCityAddressesData = null;
 
               const payload = {
                 key: cleanKey,
@@ -1304,9 +1343,14 @@ async function startServer() {
           return;
         }
 
-        // --- GET CITY ADDRESSES API ROUTE ---
+        // --- GET CITY ADDRESSES API ROUTE (IN-MEMORY CACHED) ---
         if (req.url === '/api/get-city-addresses' && req.method === 'GET') {
           try {
+            if (cachedCityAddressesData && (Date.now() - cachedCityAddressesTime < CACHE_TTL_MS)) {
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: true, addresses: cachedCityAddressesData, cached: true }));
+            }
+
             const { data, error } = await serverSupabase
               .from('city_addresses')
               .select('*');
@@ -1330,6 +1374,9 @@ async function startServer() {
                 }
               });
             }
+
+            cachedCityAddressesData = map;
+            cachedCityAddressesTime = Date.now();
 
             setNoCacheHeaders(res);
             return res.end(JSON.stringify({

@@ -31,8 +31,8 @@ export default async function handler(req, res) {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Store in Supabase database with 15 min expiry
-    const SUPABASE_URL = "https://icdawztbuezziqfvswhx.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww";
+    const SUPABASE_URL = "https://lwcuxohrnrkjyfmszxab.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo";
 
     // 1. Delete older OTPs for this email to prevent duplicates or obsolete entries
     try {

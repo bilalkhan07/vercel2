@@ -1049,8 +1049,8 @@
 
         // 3. Query Supabase Database directly for the sent OTP record
         try {
-          const SUPABASE_URL = "https://icdawztbuezziqfvswhx.supabase.co";
-          const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww";
+          const SUPABASE_URL = "https://lwcuxohrnrkjyfmszxab.supabase.co";
+          const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo";
           const dbResp = await fetch(`${SUPABASE_URL}/rest/v1/login_history?phone=eq.${encodeURIComponent(cleanEmail)}&role=eq.otp_verification&order=timestamp.desc&limit=1`, {
             headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
           });
@@ -2633,8 +2633,8 @@
 
         try {
           const db = window.DQSupabase || window.DQFirebase;
-          const SUPABASE_URL = (db && db.url) ? db.url : 'https://icdawztbuezziqfvswhx.supabase.co';
-          const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww';
+          const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+          const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
           
           await fetch(`${SUPABASE_URL}/rest/v1/designers`, {
             method: 'POST',

@@ -5,15 +5,15 @@ const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : 
 
 let rawUrl = (metaEnv && metaEnv.VITE_SUPABASE_URL) 
   ? metaEnv.VITE_SUPABASE_URL 
-  : 'https://icdawztbuezziqfvswhx.supabase.co';
+  : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
 
 // CRITICAL FIX: Clean any quotes, trailing slashes, and '/rest/v1' suffix because Supabase JS client appends /rest/v1 to every request automatically!
 rawUrl = (rawUrl || '').toString().trim().replace(/^["']|["']$/g, '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
-const SUPABASE_URL = rawUrl || 'https://icdawztbuezziqfvswhx.supabase.co';
+const SUPABASE_URL = rawUrl || 'https://lwcuxohrnrkjyfmszxab.supabase.co';
 
 let rawKey = (metaEnv && metaEnv.VITE_SUPABASE_ANON_KEY)
   ? metaEnv.VITE_SUPABASE_ANON_KEY
-  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww';
+  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
 const SUPABASE_ANON_KEY = (rawKey || '').toString().trim().replace(/^["']|["']$/g, '');
 
 // Initialize Supabase Client with auto-reconnect and session persistence
@@ -893,8 +893,11 @@ export const DQSupabase = {
       console.warn('Realtime jobs subscription warning:', e);
     }
 
-    // Secondary resilient interval polling (every 4 seconds) to guarantee sync across tabs/devices
-    const timer = setInterval(fetchLatest, 4000);
+    // Secondary resilient interval polling (every 30 seconds) to guarantee sync across tabs/devices
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchLatest();
+    }, 30000);
 
     return () => {
       try {
@@ -1502,7 +1505,10 @@ export const DQSupabase = {
       console.warn('Realtime designers subscription warning:', e);
     }
 
-    const timer = setInterval(fetchLatest, 8000);
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchLatest();
+    }, 45000);
 
     return () => {
       try {
@@ -1517,6 +1523,7 @@ export const DQSupabase = {
     if (!phone10) return () => {};
 
     const checkStatus = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       let deletedList: string[] = [];
       try { deletedList = JSON.parse(localStorage.getItem('dq_deleted_designers') || '[]'); } catch (e) {}
       if (deletedList.includes(phone10)) {
@@ -1532,7 +1539,7 @@ export const DQSupabase = {
       } catch (e) {}
     };
 
-    const timer = setInterval(checkStatus, 7000);
+    const timer = setInterval(checkStatus, 45000);
 
     return () => {
       clearInterval(timer);
@@ -2062,7 +2069,10 @@ export const DQSupabase = {
       console.warn('Realtime city addresses subscription warning:', e);
     }
 
-    const timer = setInterval(fetchLatest, 6000);
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchLatest();
+    }, 60000);
     return () => {
       try {
         if (channel) supabase.removeChannel(channel);
@@ -2192,7 +2202,10 @@ export const DQSupabase = {
       console.warn('Realtime login history subscription warning:', e);
     }
 
-    const timer = setInterval(fetchLatest, 8000);
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchLatest();
+    }, 60000);
     return () => {
       try {
         if (channel) supabase.removeChannel(channel);

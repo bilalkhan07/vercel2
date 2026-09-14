@@ -1016,7 +1016,7 @@
       // Immediate purge of stale cache from previous Supabase projects
       try {
         const db = window.DQSupabase || window.DQFirebase;
-        const currentDbUrl = (db && db.url) ? db.url : 'https://icdawztbuezziqfvswhx.supabase.co';
+        const currentDbUrl = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
         const expectedInstance = currentDbUrl.replace(/https?:\/\/|\.supabase\.co/g, '') + '_v1';
         if (localStorage.getItem('dq_db_instance_id') !== expectedInstance) {
           localStorage.removeItem('dq_registered_designers');
@@ -1115,8 +1115,8 @@
 
           // Also save in Supabase designers & login_history
           const db = window.DQSupabase || window.DQFirebase;
-          const SUPABASE_URL = (db && db.url) ? db.url : 'https://icdawztbuezziqfvswhx.supabase.co';
-          const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww';
+          const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+          const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
 
           if (cleanPhone) {
             fetch(`${SUPABASE_URL}/rest/v1/login_history`, {
@@ -2591,15 +2591,16 @@
 
       initSupabaseRealtime();
 
-      // Auto poll every 4 seconds & verify session
+      // Auto poll every 45 seconds & verify session (pauses when tab hidden)
       setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         if (!verifyDesignerActiveSession()) return;
         const approved = checkDesignerApproval();
         if (approved) {
           loadLiveJobs();
         }
         syncFromSupabase();
-      }, 4000);
+      }, 45000);
 
       // Instant Supabase custom event sync
       window.addEventListener('dq_jobs_updated', () => {
@@ -2826,8 +2827,8 @@
         if (!existingSigned && service) {
           try {
             const db = window.DQSupabase || window.DQFirebase;
-            const SUPABASE_URL = (db && db.url) ? db.url : 'https://icdawztbuezziqfvswhx.supabase.co';
-            const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww';
+            const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+            const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
             const queryPhone = myPhone || user.identifier;
             if (queryPhone) {
               const res = await fetch(`${SUPABASE_URL}/rest/v1/login_history?phone=eq.${queryPhone}&role=eq.signed_agreement&select=*&order=timestamp.desc&limit=1`, {
@@ -3021,8 +3022,8 @@
           // Save signature log to Supabase login_history
           try {
             const db = window.DQSupabase || window.DQFirebase;
-            const SUPABASE_URL = (db && db.url) ? db.url : 'https://icdawztbuezziqfvswhx.supabase.co';
-            const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZGF3enRidWV6emlxZnZzd2h4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MTAyMjksImV4cCI6MjEwNDI4NjIyOX0.jg7mOx9RERt6uj1l2yyMeldCt4--LnObCtAbwYek-Ww';
+            const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+            const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
 
             await fetch(`${SUPABASE_URL}/rest/v1/login_history`, {
               method: 'POST',
