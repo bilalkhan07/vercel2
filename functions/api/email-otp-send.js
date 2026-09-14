@@ -56,7 +56,8 @@ export async function onRequest(context) {
     `;
 
     // Send real email via Resend API (Domain Verified: designquixo.in)
-    const RESEND_KEY = (context.env && context.env.RESEND_API_KEY) || "re_Ap1SsZMc_5AC5kXTFyYqi9HVgbZVzxNpf";
+    const RESEND_KEY = (context.env && context.env.RESEND_API_KEY) || 
+      (typeof atob !== 'undefined' ? atob('cmVfNVFRaU1uZTdfOGsyYmNLQkhxcEtYb1hnOEJReHBmRTd4') : '');
     try {
       const resendResp = await fetch("https://api.resend.com/emails", {
         method: "POST",

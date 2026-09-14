@@ -938,6 +938,7 @@
           purpose: purpose || 'Login Verification'
         });
 
+        let localErrorReason = '';
         // 1. Try local server / relative API route
         try {
           const resp = await fetch('/api/email-otp-send', {
@@ -954,15 +955,10 @@
                 message: data.message || '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
               };
             }
-          } else if (resp.status !== 404) {
-            // Server was found but failed to send the email (e.g. SMTP or Resend issue).
-            // Show the exact error reason from the response so the user can easily debug!
+          } else {
             const errData = await resp.json().catch(() => ({}));
-            const errMsg = errData.message || 'Server error while sending OTP';
-            return {
-              success: false,
-              message: `[Email Service Error]: ${errMsg}`
-            };
+            localErrorReason = errData.message || `HTTP ${resp.status}`;
+            console.warn('[Local API Error, trying secondary live gateway...]:', localErrorReason);
           }
         } catch (e) {
           console.warn('[Local API Notice]:', e);
@@ -984,6 +980,14 @@
                 message: data.message || '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
               };
             }
+          } else {
+            const prodErr = await prodResp.json().catch(() => ({}));
+            if (prodErr && prodErr.message) {
+              return {
+                success: false,
+                message: `[Email Service Error]: ${localErrorReason || prodErr.message}`
+              };
+            }
           }
         } catch (e) {
           console.error('[Prod Backend SMTP Error]:', e);
@@ -991,7 +995,7 @@
 
         return {
           success: false,
-          message: 'Unable to send verification email right now. Please check your network and try again.'
+          message: localErrorReason ? `[Email Service Error]: ${localErrorReason}` : 'Unable to send verification email right now. Please check your network and try again.'
         };
       }
 

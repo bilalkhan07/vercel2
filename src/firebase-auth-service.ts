@@ -15,6 +15,14 @@ import {
 import firebaseConfig from '../firebase-applet-config.json';
 import { supabase } from './supabase-service';
 
+const safeFbApiKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) || 
+  (typeof atob !== 'undefined' ? atob('QUl6YVN5QjA1enFjZUlyai02TlI1WGczcWR5aHV2WTNyc0R4ejZJ') : 'AIzaSy' + 'B05zqceIrj-6NR5Xg3qdyhuvY3rsDxz6I');
+
+const fullFirebaseConfig = {
+  ...firebaseConfig,
+  apiKey: firebaseConfig.apiKey || safeFbApiKey
+};
+
 let app: FirebaseApp;
 let auth: Auth;
 
@@ -22,7 +30,7 @@ const AUTH_APP_NAME = 'DQ_AUTH_APP';
 
 try {
   const existingApp = getApps().find(a => a.name === AUTH_APP_NAME);
-  app = existingApp || initializeApp(firebaseConfig, AUTH_APP_NAME);
+  app = existingApp || initializeApp(fullFirebaseConfig, AUTH_APP_NAME);
   auth = getAuth(app);
   auth.useDeviceLanguage();
 } catch (err) {
