@@ -144,9 +144,23 @@ export const EmailService = {
 </body>
 </html>`;
 
-    // Skip real SMTP/Resend dispatch to conserve daily sending limits
+    // Dispatch real email via /api/send-email
     let sentSuccess = true;
-    console.log('[Email Dispatch Bypassed] Registration Confirmation Email to Designer skipped to save SMTP quota.');
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: designer.email,
+          subject,
+          html: htmlBody,
+          text: `Hello ${designer.name},\n\nThank you for registering on Design Quixo. Your application and signed Creator Agreement have been received and are under review (timeline: 2 to 6 hours).\n\nDesign Quixo India`
+        })
+      });
+    } catch (err) {
+      console.warn('Registration email dispatch notice:', err);
+      sentSuccess = false;
+    }
 
     // Log email record
     this.logEmail({
@@ -200,8 +214,34 @@ export const EmailService = {
 </body>
 </html>`;
 
-    // Skip real SMTP/Resend dispatch to conserve daily sending limits
-    console.log('[Email Dispatch Bypassed] Admin Notification Email for New Designer skipped to save SMTP quota.');
+    // Dispatch real email to Admin inboxes
+    try {
+      const textMsg = `New Creator Application:\n\nName: ${designer.name}\nEmail: ${designer.email}\nPhone: +91 ${cleanPhone}\nPortfolio: ${designer.portfolio || 'N/A'}\nSkills: ${designer.skills || 'Design'}\n\nDesign Quixo Operations Alert`;
+      await Promise.all([
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: adminEmail,
+            subject,
+            html: htmlBody,
+            text: textMsg
+          })
+        }),
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'designquixo@gmail.com',
+            subject,
+            html: htmlBody,
+            text: textMsg
+          })
+        })
+      ]);
+    } catch (err) {
+      console.warn('Admin registration alert dispatch notice:', err);
+    }
 
     this.logEmail({
       type: 'admin_alert',
