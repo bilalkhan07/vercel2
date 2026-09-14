@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     let emailSent = false;
     let resendErrorDetails = '';
     let smtpErrorDetails = '';
-    const RESEND_KEY = process.env.RESEND_API_KEY || "re_GAyBam4v_LH1vDp9iDC2FUEYW5ma3LupQ";
+    const RESEND_KEY = process.env.RESEND_API_KEY || "re_Ap1SsZMc_5AC5kXTFyYqi9HVgbZVzxNpf";
     const htmlBody = `
       <div style="max-width:480px;margin:0 auto;font-family:sans-serif;border:1px solid #e2e8f0;padding:24px;border-radius:12px;background:#ffffff;">
         <h2 style="color:#0f172a;margin-top:0;">DESIGN QUIXO</h2>

@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     let emailSent = false;
     let resendErrorDetails = '';
     let smtpErrorDetails = '';
-    const RESEND_KEY = process.env.RESEND_API_KEY || "re_GAyBam4v_LH1vDp9iDC2FUEYW5ma3LupQ";
+    const RESEND_KEY = process.env.RESEND_API_KEY || "re_Ap1SsZMc_5AC5kXTFyYqi9HVgbZVzxNpf";
 
     // 1. Try Resend API (Primary)
     try {

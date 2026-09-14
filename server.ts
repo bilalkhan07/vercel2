@@ -94,7 +94,7 @@ interface SendMailOptions {
 
 async function sendMailWithFallback(options: SendMailOptions): Promise<{ success: boolean; via: string; error?: string }> {
   // 0. Try Resend API (Verified Domain alerts@designquixo.in)
-  const resendKey = process.env.RESEND_API_KEY || "re_GAyBam4v_LH1vDp9iDC2FUEYW5ma3LupQ";
+  const resendKey = process.env.RESEND_API_KEY || "re_Ap1SsZMc_5AC5kXTFyYqi9HVgbZVzxNpf";
   try {
     const resendResp = await fetch("https://api.resend.com/emails", {
       method: "POST",

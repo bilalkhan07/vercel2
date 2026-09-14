@@ -951,7 +951,7 @@
             if (data && data.success) {
               return {
                 success: true,
-                message: '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
+                message: data.message || '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
               };
             }
           } else if (resp.status !== 404) {
@@ -981,7 +981,7 @@
             if (data && data.success) {
               return {
                 success: true,
-                message: '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
+                message: data.message || '✓ 6-digit verification code dispatched from alerts@designquixo.in to your email inbox.'
               };
             }
           }
