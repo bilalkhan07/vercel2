@@ -2597,28 +2597,36 @@
         }
 
         // Save designer record with phone, email identifier, portfolio, and skills
+        // (Only valid columns for Supabase designers table: id, name, phone, identifier, password, portfolio, skills, status, date, createdat)
         const directPayload = {
-          id: clean10,
+          id: clean10 || email,
           name: name || 'Designer',
-          phone: clean10,
+          phone: clean10 || '',
           identifier: email || clean10,
           password: password.toString(),
           portfolio: portfolio || '',
           skills: skills || 'Graphic Design',
-          avatar: currentSignupDpUrl || '',
-          avatarUrl: currentSignupDpUrl || '',
           status: 'Pending',
           date: new Date().toLocaleDateString('en-IN'),
           createdat: new Date().toISOString()
         };
 
+        // Server registration mirror (bypasses any client-side RLS restrictions)
+        try {
+          fetch('/api/register-designer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(directPayload)
+          }).catch(() => {});
+        } catch(e) {}
+
         // Cache DP immediately in persistent map
         if (currentSignupDpUrl) {
           try {
             const dpMap = JSON.parse(localStorage.getItem('dq_user_dp_map') || '{}');
-            dpMap[clean10] = currentSignupDpUrl;
+            if (clean10) dpMap[clean10] = currentSignupDpUrl;
             if (email) dpMap[email.toLowerCase()] = currentSignupDpUrl;
-            dpMap['+91' + clean10] = currentSignupDpUrl;
+            if (clean10) dpMap['+91' + clean10] = currentSignupDpUrl;
             localStorage.setItem('dq_user_dp_map', JSON.stringify(dpMap));
           } catch(e) {}
         }

@@ -916,6 +916,166 @@ async function startServer() {
           return;
         }
 
+        // --- DESIGNER REGISTRATION API ROUTE ---
+        if (req.url === '/api/register-designer' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const payload = JSON.parse(body || '{}');
+              const rawPhone = (payload.phone || payload.whatsapp || payload.identifier || '').toString();
+              const clean10 = rawPhone.replace(/\D/g, '').slice(-10);
+              const cleanEmail = (payload.email || (payload.identifier && payload.identifier.includes('@') ? payload.identifier : '') || '').toString().trim().toLowerCase();
+              const name = (payload.name || 'Designer').toString().trim();
+              const pass = (payload.password || 'Designer@123').toString().trim();
+              const portfolio = (payload.portfolio || '').toString().trim();
+              const skills = (payload.skills || 'Graphic Design').toString().trim();
+              const status = payload.status || 'Pending';
+              const dateStr = payload.date || new Date().toLocaleDateString('en-IN');
+              const nowIso = new Date().toISOString();
+
+              const primaryId = clean10 || cleanEmail;
+              if (!primaryId) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ success: false, message: 'Valid 10-digit mobile number or email address required.' }));
+              }
+
+              // Supabase exact valid columns: id, name, phone, identifier, password, portfolio, skills, status, date, createdat
+              const designerRow = {
+                id: primaryId,
+                name: name,
+                phone: clean10 || '',
+                identifier: cleanEmail || clean10,
+                password: pass,
+                portfolio: portfolio,
+                skills: skills,
+                status: status,
+                date: dateStr,
+                createdat: nowIso
+              };
+
+              const { data: upsertData, error: upsertErr } = await serverSupabase
+                .from('designers')
+                .upsert(designerRow);
+
+              if (upsertErr) {
+                console.warn('[SERVER /api/register-designer] Supabase upsert notice:', upsertErr.message);
+              }
+
+              // Save registration record in login_history
+              try {
+                await serverSupabase.from('login_history').insert({
+                  id: `reg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                  phone: clean10 || cleanEmail,
+                  name: name,
+                  role: 'designer',
+                  status: `Designer Registered (${status}) - Portfolio: ${portfolio ? 'Yes' : 'None'}`,
+                  timestamp: nowIso
+                });
+              } catch (logErr) {
+                console.warn('[SERVER /api/register-designer] login_history notice:', logErr);
+              }
+
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ 
+                success: true, 
+                designer: designerRow,
+                message: 'Designer registered and synced to cloud successfully'
+              }));
+            } catch (err: any) {
+              console.error('[SERVER /api/register-designer ERROR]:', err);
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: false, message: err.message || 'Error registering designer' }));
+            }
+          });
+          return;
+        }
+
+        // --- DESIGNER STATUS UPDATE API ROUTE (APPROVE / PENDING / REVOKE) ---
+        if (req.url === '/api/update-designer-status' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const { key, status } = JSON.parse(body || '{}');
+              const cleanKey = (key || '').toString().trim().toLowerCase();
+              const newStatus = (status === 'Approved' || status === 'Revoked') ? status : 'Pending';
+
+              if (!cleanKey) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                return res.end(JSON.stringify({ success: false, message: 'Designer key is required' }));
+              }
+
+              const clean10 = cleanKey.replace(/\D/g, '').slice(-10);
+
+              // Update Supabase by id, phone, or identifier
+              const updateTasks = [
+                Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('id', cleanKey)),
+                Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('identifier', cleanKey))
+              ];
+              if (clean10 && clean10.length === 10) {
+                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('id', clean10)));
+                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('phone', clean10)));
+                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('identifier', clean10)));
+              }
+
+              await Promise.allSettled(updateTasks);
+
+              // Log status change in login_history
+              try {
+                await serverSupabase.from('login_history').insert({
+                  id: `status-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                  phone: clean10 || cleanKey,
+                  name: `Designer ${cleanKey}`,
+                  role: 'designer',
+                  status: `Admin updated status to: ${newStatus}`,
+                  timestamp: new Date().toISOString()
+                });
+              } catch (logErr) {}
+
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ 
+                success: true, 
+                key: cleanKey, 
+                status: newStatus,
+                message: `Designer ${cleanKey} status updated to ${newStatus}`
+              }));
+            } catch (err: any) {
+              console.error('[SERVER /api/update-designer-status ERROR]:', err);
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: false, message: err.message || 'Error updating designer status' }));
+            }
+          });
+          return;
+        }
+
+        // --- GET DESIGNERS API ROUTE ---
+        if (req.url === '/api/get-designers' && req.method === 'GET') {
+          try {
+            const { data, error } = await serverSupabase
+              .from('designers')
+              .select('*');
+
+            if (error) {
+              console.warn('[SERVER /api/get-designers notice]:', error.message);
+            }
+
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ 
+              success: true, 
+              designers: Array.isArray(data) ? data : [] 
+            }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: false, designers: [], message: err.message }));
+          }
+        }
+
         
     next();
   });

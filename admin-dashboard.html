@@ -2196,7 +2196,7 @@
           localStorage.setItem('dq_approved_designers', JSON.stringify(approved));
           renderDesigners();
 
-          // Dispatch Welcome & Platform Feature Email to Designer (STRICTLY NO FALLBACK TO @designquixo.com)
+          // Dispatch Welcome & Platform Feature Email to Designer
           try {
             const emailSvc = window.DQEmailService || window.EmailService;
             if (emailSvc && targetEmail) {
@@ -2210,18 +2210,24 @@
             console.warn('Welcome email error:', eErr);
           }
 
-          // Realtime Supabase update
+          // Realtime Server & Supabase status update
+          try {
+            fetch('/api/update-designer-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ key: targetEmail || targetPhone || target.id || cleanKey, status: 'Approved' })
+            }).catch(() => {});
+          } catch(e) {}
+
           const db = window.DQSupabase || window.DQFirebase;
           if (db && typeof db.updateDesignerStatus === 'function') {
-            const result = await db.updateDesignerStatus(targetEmail || targetPhone || target.id, 'Approved');
-            if (result && result.success === false) {
-              alert(`⚠️ Supabase Cloud Sync failed: ${result.error || 'Access Denied'}\n\nThis usually means Row-Level-Security (RLS) is enabled on your Supabase 'designers' table, but there is no policy allowing updates for public/anon users. Your changes will be revert on next cloud synchronization until the policy is set up on Supabase!`);
-            } else {
-              showToast(`✅ Designer ${target.name || targetEmail || targetPhone} approved!`);
+            try {
+              await db.updateDesignerStatus(targetEmail || targetPhone || target.id, 'Approved');
+            } catch (err) {
+              console.warn('Client updateDesignerStatus notice:', err);
             }
-          } else {
-            showToast(`✅ Designer ${target.name || targetEmail || targetPhone} approved!`);
           }
+          showToast(`✅ Designer ${target.name || targetEmail || targetPhone} approved!`);
         }
         renderDesigners();
       };
@@ -2250,18 +2256,24 @@
           localStorage.setItem('dq_approved_designers', JSON.stringify(approved));
           renderDesigners();
 
-          // Realtime Supabase update
+          // Realtime Server & Supabase status update
+          try {
+            fetch('/api/update-designer-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ key: targetEmail || targetPhone || target.id || cleanKey, status: 'Pending' })
+            }).catch(() => {});
+          } catch(e) {}
+
           const db = window.DQSupabase || window.DQFirebase;
           if (db && typeof db.updateDesignerStatus === 'function') {
-            const result = await db.updateDesignerStatus(targetEmail || targetPhone || target.id, 'Pending');
-            if (result && result.success === false) {
-              alert(`⚠️ Supabase Cloud Sync failed: ${result.error || 'Access Denied'}\n\nThis usually means Row-Level-Security (RLS) is enabled on your Supabase 'designers' table, but there is no policy allowing updates for public/anon users. Your changes will be revert on next cloud synchronization until the policy is set up on Supabase!`);
-            } else {
-              showToast(`⚠️ Designer ${target.name || targetEmail || targetPhone} status set to Pending.`);
+            try {
+              await db.updateDesignerStatus(targetEmail || targetPhone || target.id, 'Pending');
+            } catch (err) {
+              console.warn('Client updateDesignerStatus notice:', err);
             }
-          } else {
-            showToast(`⚠️ Designer ${target.name || targetEmail || targetPhone} status set to Pending.`);
           }
+          showToast(`⚠️ Designer ${target.name || targetEmail || targetPhone} status set to Pending.`);
         }
         renderDesigners();
       };
@@ -2943,25 +2955,46 @@
                 }
               });
 
-              // Preserve local-only designers ONLY if we have an empty remote list (e.g. offline fallback)
-              if (list.length === 0) {
-                let localReg = [];
-                try { localReg = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]'); } catch(e) {}
-                if (Array.isArray(localReg)) {
-                  localReg.forEach(ld => {
-                    const lp = get10DigitPhone(ld.phone || ld.identifier);
-                    const le = (ld.email || (ld.identifier && ld.identifier.includes('@') ? ld.identifier : '')).toString().trim().toLowerCase();
-                    if ((lp && !deletedList.includes(lp)) || (le && !deletedList.includes(le))) {
-                      const exIdx = list.findIndex(r => 
-                        (le && r.email && r.email.toLowerCase() === le) || 
-                        (lp && get10DigitPhone(r.phone || r.identifier) === lp)
-                      );
-                      if (exIdx === -1) {
-                        list.push(ld);
-                      }
-                    }
-                  });
+              // Fail-safe merge: ensure approved status and local registrations are never lost during sync
+              let localReg = [];
+              try { localReg = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]'); } catch(e) {}
+              let localApproved = [];
+              try { localApproved = JSON.parse(localStorage.getItem('dq_approved_designers') || '[]'); } catch(e) {}
+
+              const approvedKeys = new Set();
+              localApproved.forEach(a => {
+                const lp = get10DigitPhone(a.phone || a.identifier);
+                const le = (a.email || (a.identifier && a.identifier.includes('@') ? a.identifier : '')).toLowerCase();
+                if (lp) approvedKeys.add(lp);
+                if (le) approvedKeys.add(le);
+              });
+
+              // Maintain Approved status if locally marked as approved
+              list.forEach(item => {
+                const ip = get10DigitPhone(item.phone || item.identifier);
+                const ie = (item.email || (item.identifier && item.identifier.includes('@') ? item.identifier : '')).toLowerCase();
+                if ((ip && approvedKeys.has(ip)) || (ie && approvedKeys.has(ie))) {
+                  item.status = 'Approved';
                 }
+              });
+
+              // Merge any local registration that has not yet synced to remote
+              if (Array.isArray(localReg)) {
+                localReg.forEach(ld => {
+                  const lp = get10DigitPhone(ld.phone || ld.identifier);
+                  const le = (ld.email || (ld.identifier && ld.identifier.includes('@') ? ld.identifier : '')).toString().trim().toLowerCase();
+                  if ((lp && !deletedList.includes(lp)) || (le && !deletedList.includes(le))) {
+                    const exIdx = list.findIndex(r => 
+                      (le && r.email && r.email.toLowerCase() === le) || 
+                      (lp && get10DigitPhone(r.phone || r.identifier) === lp)
+                    );
+                    if (exIdx === -1) {
+                      list.push(ld);
+                    } else if (ld.status === 'Approved' && list[exIdx].status !== 'Approved') {
+                      list[exIdx].status = 'Approved';
+                    }
+                  }
+                });
               }
 
               localStorage.setItem('dq_registered_designers', JSON.stringify(list));

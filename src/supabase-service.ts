@@ -173,7 +173,18 @@ export function extractImageUrl(field: any): string {
 
 
 export async function pruneMissingColumnsAndUpsert(table: string, payload: any): Promise<{ success: boolean; error?: string }> {
+  // Supabase designers table schema: [id, name, phone, identifier, password, portfolio, skills, status, date, createdat]
+  const DESIGNERS_VALID_COLS = new Set(['id', 'name', 'phone', 'identifier', 'password', 'portfolio', 'skills', 'status', 'date', 'createdat']);
+
   let currentPayload = { ...payload };
+  if (table === 'designers') {
+    Object.keys(currentPayload).forEach(key => {
+      if (!DESIGNERS_VALID_COLS.has(key.toLowerCase())) {
+        delete currentPayload[key];
+      }
+    });
+  }
+
   let attempts = 0;
   const maxAttempts = 6;
 
@@ -188,19 +199,30 @@ export async function pruneMissingColumnsAndUpsert(table: string, payload: any):
       console.warn(`[Supabase SDK Upsert warning on ${table} - attempt ${attempts}]:`, error.message);
       const errMsg = (error.message || '').toLowerCase();
       
-      // PostgreSQL undefined_column is error code '42703' or has specific keywords
-      if (error.code === '42703' || errMsg.includes('does not exist') || errMsg.includes('column') || errMsg.includes('not found')) {
-        const match = error.message.match(/column "([^"]+)"/i) || error.message.match(/column '([^']+)'/i);
+      // PostgreSQL undefined_column or PostgREST missing column error (PGRST204)
+      if (error.code === '42703' || error.code === 'PGRST204' || errMsg.includes('does not exist') || errMsg.includes('column') || errMsg.includes('not found') || errMsg.includes('schema cache')) {
+        const match = error.message.match(/Could not find the '([^']+)' column/i) ||
+                      error.message.match(/Could not find the "([^"]+)" column/i) ||
+                      error.message.match(/column "([^"]+)"/i) ||
+                      error.message.match(/column '([^']+)'/i);
         if (match && match[1]) {
           const missingCol = match[1];
           console.warn(`[Auto-Pruner]: Column "${missingCol}" does not exist in table "${table}". Pruning and retrying...`);
           delete currentPayload[missingCol];
+          if (missingCol === 'avatar') delete currentPayload.avatarUrl;
+          if (missingCol === 'avatarUrl') delete currentPayload.avatar;
           continue;
         } else {
-          // If match fails but email or createdat is in payload, try pruning them
+          // If match fails but email, avatar, or createdat is in payload, try pruning them
           if ('email' in currentPayload) {
             console.warn(`[Auto-Pruner]: Fallback pruning "email"...`);
             delete currentPayload.email;
+            continue;
+          }
+          if ('avatar' in currentPayload || 'avatarUrl' in currentPayload) {
+            console.warn(`[Auto-Pruner]: Fallback pruning "avatar"...`);
+            delete currentPayload.avatar;
+            delete currentPayload.avatarUrl;
             continue;
           }
           if ('createdat' in currentPayload) {
@@ -224,6 +246,13 @@ export async function pruneMissingColumnsAndUpsert(table: string, payload: any):
 
   // REST Fallback with dynamic pruning
   let restPayload = { ...payload };
+  if (table === 'designers') {
+    Object.keys(restPayload).forEach(key => {
+      if (!DESIGNERS_VALID_COLS.has(key.toLowerCase())) {
+        delete restPayload[key];
+      }
+    });
+  }
   let restAttempts = 0;
   const maxRestAttempts = 5;
 
@@ -246,16 +275,23 @@ export async function pruneMissingColumnsAndUpsert(table: string, payload: any):
       const text = await res.text();
       console.warn(`[REST Post attempt ${restAttempts} on ${table} failed]:`, text);
       const lowerText = text.toLowerCase();
-      if (lowerText.includes('does not exist') || lowerText.includes('column') || lowerText.includes('not found')) {
-        const match = text.match(/Could not find the '([^']+)' column/i) || text.match(/column "([^"]+)"/i) || text.match(/column '([^']+)'/i);
+      if (lowerText.includes('does not exist') || lowerText.includes('column') || lowerText.includes('not found') || lowerText.includes('schema cache')) {
+        const match = text.match(/Could not find the '([^']+)' column/i) || text.match(/Could not find the "([^"]+)" column/i) || text.match(/column "([^"]+)"/i) || text.match(/column '([^']+)'/i);
         if (match && match[1]) {
           const missingCol = match[1];
           console.warn(`[Auto-Pruner REST]: Column "${missingCol}" does not exist in table "${table}". Pruning and retrying REST...`);
           delete restPayload[missingCol];
+          if (missingCol === 'avatar') delete restPayload.avatarUrl;
+          if (missingCol === 'avatarUrl') delete restPayload.avatar;
           continue;
         } else {
           if ('email' in restPayload) {
             delete restPayload.email;
+            continue;
+          }
+          if ('avatar' in restPayload || 'avatarUrl' in restPayload) {
+            delete restPayload.avatar;
+            delete restPayload.avatarUrl;
             continue;
           }
           if ('createdat' in restPayload) {
@@ -298,6 +334,14 @@ export async function safeUpsertDesigner(designer: any): Promise<{ success: bool
     date: designer.date || new Date().toLocaleDateString('en-IN'),
     createdat: designer.createdAt || designer.registeredAt || new Date().toISOString()
   };
+
+  try {
+    fetch('/api/register-designer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lowercasePayload)
+    }).catch(() => {});
+  } catch (e) {}
 
   return pruneMissingColumnsAndUpsert('designers', lowercasePayload);
 }
@@ -983,6 +1027,18 @@ export const DQSupabase = {
       }
       
       await Promise.allSettled(restPromises);
+
+      // Server-side status synchronization (fail-safe)
+      try {
+        await fetch('/api/update-designer-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: cleanKey, status })
+        });
+      } catch (srvErr) {
+        console.warn('Server /api/update-designer-status call notice:', srvErr);
+      }
+
       return { success: true };
     } catch (err: any) {
       console.warn('Supabase update designer exception:', err);
@@ -1325,27 +1381,51 @@ export const DQSupabase = {
           }
         });
 
-        // Preserve local-only designers ONLY if we have an empty remote list (e.g. offline fallback)
-        if (list.length === 0) {
-          let localList: any[] = [];
-          try {
-            localList = JSON.parse(safeStorage.getItem('dq_registered_designers') || '[]');
-          } catch (e) {}
-          if (Array.isArray(localList)) {
-            localList.forEach((ld: any) => {
-              const lp = clean10Phone(ld.phone || ld.identifier || ld.id);
-              const le = (ld.email || (ld.identifier && ld.identifier.includes('@') ? ld.identifier : '')).toString().trim().toLowerCase();
-              if ((lp && !deletedList.includes(lp)) || (le && !deletedList.includes(le))) {
-                const exIdx = list.findIndex(r => 
-                  (le && r.email && r.email.toLowerCase() === le) || 
-                  (lp && clean10Phone(r.phone || r.identifier || r.id) === lp)
-                );
-                if (exIdx === -1) {
-                  list.push(ld);
-                }
-              }
-            });
+        // Fail-safe merge: ensure approved status and local registrations are never lost during sync
+        let localList: any[] = [];
+        try {
+          localList = JSON.parse(safeStorage.getItem('dq_registered_designers') || '[]');
+        } catch (e) {}
+
+        let localApproved: any[] = [];
+        try {
+          localApproved = JSON.parse(safeStorage.getItem('dq_approved_designers') || '[]');
+        } catch (e) {}
+
+        const approvedKeys = new Set<string>();
+        localApproved.forEach((a: any) => {
+          const lp = clean10Phone(a.phone || a.identifier);
+          const le = (a.email || (a.identifier && a.identifier.includes('@') ? a.identifier : '')).toString().trim().toLowerCase();
+          if (lp) approvedKeys.add(lp);
+          if (le) approvedKeys.add(le);
+        });
+
+        // Maintain Approved status if locally marked as approved
+        list.forEach((item: any) => {
+          const ip = clean10Phone(item.phone || item.identifier);
+          const ie = (item.email || (item.identifier && item.identifier.includes('@') ? item.identifier : '')).toString().trim().toLowerCase();
+          if ((ip && approvedKeys.has(ip)) || (ie && approvedKeys.has(ie))) {
+            item.status = 'Approved';
           }
+        });
+
+        // Merge any local registration that has not yet synced to remote
+        if (Array.isArray(localList)) {
+          localList.forEach((ld: any) => {
+            const lp = clean10Phone(ld.phone || ld.identifier || ld.id);
+            const le = (ld.email || (ld.identifier && ld.identifier.includes('@') ? ld.identifier : '')).toString().trim().toLowerCase();
+            if ((lp && !deletedList.includes(lp)) || (le && !deletedList.includes(le))) {
+              const exIdx = list.findIndex(r => 
+                (le && r.email && r.email.toLowerCase() === le) || 
+                (lp && clean10Phone(r.phone || r.identifier || r.id) === lp)
+              );
+              if (exIdx === -1) {
+                list.push(ld);
+              } else if (ld.status === 'Approved' && list[exIdx].status !== 'Approved') {
+                list[exIdx].status = 'Approved';
+              }
+            }
+          });
         }
 
         safeStorage.setItem('dq_registered_designers', JSON.stringify(list));
@@ -2193,20 +2273,26 @@ export const DQSupabase = {
 
       // Save directly to Supabase designers table (Strict schema match: id, name, phone, identifier, password, portfolio, skills, status, date, createdat)
       const designerRow = {
-        id: cleanEmail || phone10,
+        id: phone10 || cleanEmail,
         name: applicant.name || 'Designer',
         phone: phone10 || '',
-        email: cleanEmail || '',
         identifier: cleanEmail || phone10 || '',
         password: cleanPass,
         status: 'Pending',
         portfolio: applicant.portfolio || '',
         skills: applicant.skills || 'Graphic Design',
-        avatar: dpUrl,
-        avatarUrl: dpUrl,
         date: new Date().toLocaleDateString('en-IN'),
         createdat: new Date().toISOString()
       };
+
+      // Mirror to server endpoint for persistent cloud sync
+      try {
+        fetch('/api/register-designer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(designerRow)
+        }).catch(() => {});
+      } catch (e) {}
 
       const syncResult = await pruneMissingColumnsAndUpsert('designers', designerRow);
       if (!syncResult.success) {
