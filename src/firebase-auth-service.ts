@@ -15,7 +15,7 @@ import {
 import firebaseConfig from '../firebase-applet-config.json';
 import { supabase } from './supabase-service';
 
-const safeFbApiKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) || 
+const safeFbApiKey = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FIREBASE_API_KEY) || 
   (typeof atob !== 'undefined' ? atob('QUl6YVN5QjA1enFjZUlyai02TlI1WGczcWR5aHV2WTNyc0R4ejZJ') : 'AIzaSy' + 'B05zqceIrj-6NR5Xg3qdyhuvY3rsDxz6I');
 
 const fullFirebaseConfig = {

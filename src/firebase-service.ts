@@ -14,8 +14,8 @@ import {
 } from 'firebase/firestore';
 
 const getSafeFbKey = () => {
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) {
-    return import.meta.env.VITE_FIREBASE_API_KEY;
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_FIREBASE_API_KEY) {
+    return (import.meta as any).env.VITE_FIREBASE_API_KEY;
   }
   // Base64 decoded at runtime to prevent public GitHub secret scanning false-positives
   return typeof atob !== 'undefined'

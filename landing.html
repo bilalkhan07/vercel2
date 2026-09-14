@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title id="page-title">Graphic Designer in Indore - 30-Min Fast Human Graphic Design | Design Quixo</title>
     <meta id="page-desc" name="description" content="Looking for a top graphic designer or logo designer in Indore? Get 100% human manual designs delivered in 30-60 minutes on WhatsApp. Serving Vijay Nagar, Palasia, Rajwada & all Indore businesses." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <link rel="canonical" id="canonical-tag" href="https://designquixo.in/landing.html?city=indore" />
+    <meta property="og:title" id="og-title" content="Top Graphic Designer in Indore - 30-Min Fast Human Delivery | Design Quixo" />
+    <meta property="og:description" id="og-desc" content="Looking for the best graphic designer in Indore? Get 100% human manual designs delivered in 30-60 minutes on WhatsApp." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" id="og-url" content="https://designquixo.in/landing.html?city=indore" />
+    <meta property="og:image" content="https://designquixo.in/favicon.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="shortcut icon" type="image/png" href="favicon.png" />
     <link rel="apple-touch-icon" href="favicon.png" />
@@ -749,8 +757,33 @@
       const serviceTitle = serviceDisplayMap[serviceKey] || 'Graphic Designer';
 
       // Update Dynamic DOM Elements
-      document.title = `Top ${serviceTitle} in ${cityName} - 30-Min Fast Human Delivery | Design Quixo`;
-      document.getElementById('page-desc').setAttribute('content', `Looking for the best ${serviceTitle} in ${cityName}? Get 100% human manual designs delivered in 30-60 minutes on WhatsApp. Serving local businesses across ${cityName}.`);
+      const pageTitleText = `Top ${serviceTitle} in ${cityName} - 30-Min Fast Human Delivery | Design Quixo`;
+      const pageDescText = `Looking for the best ${serviceTitle} in ${cityName}? Get 100% human manual designs delivered in 30-60 minutes on WhatsApp. Serving local businesses across ${cityName}.`;
+      document.title = pageTitleText;
+      const pageDescEl = document.getElementById('page-desc');
+      if (pageDescEl) pageDescEl.setAttribute('content', pageDescText);
+
+      const canonicalEl = document.getElementById('canonical-tag');
+      const ogUrlEl = document.getElementById('og-url');
+      const ogTitleEl = document.getElementById('og-title');
+      const ogDescEl = document.getElementById('og-desc');
+      const canonicalHref = `https://designquixo.in/landing.html?city=${encodeURIComponent(cityKey)}`;
+      if (canonicalEl) canonicalEl.setAttribute('href', canonicalHref);
+      if (ogUrlEl) ogUrlEl.setAttribute('content', canonicalHref);
+      if (ogTitleEl) ogTitleEl.setAttribute('content', pageTitleText);
+      if (ogDescEl) ogDescEl.setAttribute('content', pageDescText);
+
+      // Dynamically sync JSON-LD Schema
+      const schemaScript = document.getElementById('seo-schema');
+      if (schemaScript) {
+        try {
+          const schemaData = JSON.parse(schemaScript.textContent);
+          schemaData.name = `Design Quixo - ${serviceTitle} in ${cityName}`;
+          if (!schemaData.address) schemaData.address = { "@type": "PostalAddress", "addressCountry": "IN" };
+          schemaData.address.addressLocality = cityName;
+          schemaScript.textContent = JSON.stringify(schemaData);
+        } catch(e) {}
+      }
 
       document.getElementById('crumb-city').textContent = cityName;
       document.getElementById('crumb-service').textContent = serviceTitle;
