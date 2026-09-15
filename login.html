@@ -1268,7 +1268,7 @@
           function performClientFallbackAuth(ident, pass) {
             const cleanIdent = (ident || '').toString().trim().toLowerCase();
             const cleanPass = (pass || '').toString().trim();
-            const storedAdminPass = localStorage.getItem('dq_admin_password') || 'Bilal#0897';
+            const storedAdminPass = localStorage.getItem('dq_admin_password') || '@Bilal@786';
 
             // Check Admin credentials
             const isAdminIdent = (
@@ -1280,7 +1280,7 @@
             );
 
             if (isAdminIdent) {
-              if (cleanPass === storedAdminPass || cleanPass === 'Bilal#0897') {
+              if (cleanPass === storedAdminPass || cleanPass === '@Bilal@786' || cleanPass === 'Bilal#0897') {
                 return {
                   id: 'admin',
                   name: 'Bilal Khan (Admin)',
