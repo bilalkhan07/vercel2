@@ -234,13 +234,13 @@
         container.innerHTML = services.map(s => {
           const price = s.price || 359;
           const sla = s.sla || '30-45 mins';
-          const img = s.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80';
+          const img = s.image || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';
 
           return `
             <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between shadow-xs">
               <div>
                 <div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">
-                  <img src="${img}" alt="${s.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                  <img src="${img}" alt="${s.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';" />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
                   
                   <div class="absolute top-2 left-2 sm:top-3 sm:left-3 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/95 backdrop-blur-xs border border-white/60 flex items-center justify-center shadow-sm">
@@ -257,14 +257,13 @@
                     <h3 class="text-sm sm:text-xl font-extrabold text-slate-950 font-['Space_Grotesk'] leading-snug tracking-tight">${s.title}</h3>
                   </div>
 
-                  <p class="text-xs sm:text-sm font-semibold text-slate-700 leading-snug line-clamp-2 sm:line-clamp-none">${s.description}</p>
+                  <p class="text-xs sm:text-sm font-semibold text-slate-700 leading-snug line-clamp-2 sm:line-clamp-none">${s.description || ''}</p>
                 </div>
               </div>
 
               <div class="p-3.5 sm:p-6 pt-0">
                 <a href="request.html?service=${encodeURIComponent(s.id)}" class="w-full text-center py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-800 font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2">
-                  <span>Get in ₹${price}</span>
-                  <i data-lucide="arrow-right" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+                  <span>Get in ₹${price} &rarr;</span>
                 </a>
               </div>
             </div>

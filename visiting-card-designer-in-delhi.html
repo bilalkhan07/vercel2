@@ -936,6 +936,12 @@
         img.src = 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';
       };
 
+      window.handleAvatarFallback = function(img) {
+        if (!img) return;
+        img.onerror = null;
+        img.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+      };
+
                         function renderCityDynamicContent() {
         try {
           let services = [];
@@ -969,7 +975,7 @@
               return '<div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between shadow-xs">' +
                 '<div>' +
                   '<div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">' +
-                    '<img src="' + img + '" alt="' + (s.title || 'Graphic Design') + ' in ' + currentCityName + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';" />' +
+                    '<img src="' + img + '" alt="' + (s.title || 'Graphic Design') + ' in ' + currentCityName + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handleCityImgFallback && window.handleCityImgFallback(this);" />' +
                     '<div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>' +
                     '<div class="absolute top-2 left-2 sm:top-3 sm:left-3 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/95 backdrop-blur-xs border border-white/60 flex items-center justify-center shadow-sm">' +
                       iconSvg +
@@ -979,7 +985,7 @@
                     '</span>' +
                   '</div>' +
                   '<div class="p-3.5 sm:p-6 space-y-1.5 sm:space-y-2">' +
-                    '<h3 class="text-sm sm:text-xl font-extrabold text-slate-950 font-['Space_Grotesk'] leading-snug tracking-tight">' + (s.title || 'Custom Design') + '</h3>' +
+                    '<h3 class="text-sm sm:text-xl font-extrabold text-slate-950 leading-snug tracking-tight">' + (s.title || 'Custom Design') + '</h3>' +
                     '<p class="text-xs sm:text-sm font-semibold text-slate-700 leading-snug line-clamp-2">' + (s.description || '') + '</p>' +
                   '</div>' +
                 '</div>' +
@@ -1105,7 +1111,7 @@
             '</div>' +
             '<div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">' +
               '<div class="flex items-center gap-3 overflow-hidden">' +
-                '<img src="' + avatar + '" alt="' + name + '" class="w-11 h-11 rounded-full object-cover border-2 border-amber-400 shrink-0 shadow-2xs" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';" />' +
+                '<img src="' + avatar + '" alt="' + name + '" class="w-11 h-11 rounded-full object-cover border-2 border-amber-400 shrink-0 shadow-2xs" onerror="window.handleAvatarFallback && window.handleAvatarFallback(this);" />' +
                 '<div class="truncate">' +
                   '<h4 class="font-bold text-sm text-slate-900 truncate leading-tight">' + name + '</h4>' +
                   '<p class="text-xs text-slate-500 truncate mt-0.5">' + role + '</p>' +
@@ -1157,19 +1163,34 @@
         }
       });
 
-      // Real-time backend sync from Supabase/Firebase if active
+      // Real-time backend sync from Supabase if active
       async function syncCityData() {
-        const db = window.DQSupabase || window.DQFirebase;
-        if (db && typeof db.fetchCityAddresses === 'function') {
-          try {
-            await db.fetchCityAddresses();
-            populateCityOfficeInfo();
-          } catch(e) {}
-        }
-        if (db && typeof db.subscribeReviews === 'function') {
-          try {
-            db.subscribeReviews(renderCityReviews);
-          } catch(e) {}
+        const db = window.DQSupabase;
+        if (db) {
+          if (typeof db.fetchServices === 'function') {
+            try {
+              await db.fetchServices();
+              renderCityDynamicContent();
+            } catch(e) {}
+          }
+          if (typeof db.subscribeServices === 'function') {
+            try {
+              db.subscribeServices(function() {
+                renderCityDynamicContent();
+              });
+            } catch(e) {}
+          }
+          if (typeof db.fetchCityAddresses === 'function') {
+            try {
+              await db.fetchCityAddresses();
+              populateCityOfficeInfo();
+            } catch(e) {}
+          }
+          if (typeof db.subscribeReviews === 'function') {
+            try {
+              db.subscribeReviews(renderCityReviews);
+            } catch(e) {}
+          }
         }
       }
       setTimeout(syncCityData, 300);

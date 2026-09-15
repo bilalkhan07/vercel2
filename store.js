@@ -264,7 +264,7 @@ const INITIAL_SAMPLE_JOBS = [];
 // Resilient Background Cloud Sync Helpers (Auto-retries if Supabase module is loading)
 function getCloudDb() {
   if (typeof window === 'undefined') return null;
-  return window.DQSupabase || window.DQFirebase || null;
+  return window.DQSupabase || null;
 }
 
 function syncServiceCloud(service) {
