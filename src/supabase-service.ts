@@ -1607,17 +1607,34 @@ export const DQSupabase = {
   },
 
   async fetchServices(): Promise<any[]> {
+    let local: any[] = [];
+    try { local = JSON.parse(localStorage.getItem('dq_services') || '[]'); } catch(e) {}
+
     try {
       const { data, error } = await supabase.from('services').select('*');
       if (!error && Array.isArray(data) && data.length > 0) {
-        localStorage.setItem('dq_services', JSON.stringify(data));
-        window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: data }));
-        return data;
+        const mergedMap = new Map();
+        local.forEach(item => { if (item && item.id) mergedMap.set(item.id, item); });
+        data.forEach(remote => {
+          if (remote && remote.id) {
+            const existing = mergedMap.get(remote.id) || {};
+            mergedMap.set(remote.id, {
+              ...existing,
+              ...remote,
+              // Retain local image if remote image is blank or default unsplash while local has custom image
+              image: (remote.image && remote.image.trim() !== '') ? remote.image : (existing.image || remote.image)
+            });
+          }
+        });
+        const merged = Array.from(mergedMap.values());
+        localStorage.setItem('dq_services', JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: merged }));
+        return merged;
       }
     } catch (err) {
       console.warn('Fetch services error:', err);
     }
-    return [];
+    return local;
   },
 
   async getServices(): Promise<any[]> {
@@ -1627,11 +1644,9 @@ export const DQSupabase = {
   subscribeServices(callback: (services: any[]) => void): () => void {
     const fetchLatest = async () => {
       try {
-        const { data, error } = await supabase.from('services').select('*');
-        if (!error && Array.isArray(data) && data.length > 0) {
-          localStorage.setItem('dq_services', JSON.stringify(data));
-          window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: data }));
-          callback(data);
+        const services = await this.fetchServices();
+        if (Array.isArray(services) && services.length > 0) {
+          callback(services);
         }
       } catch (err) {
         console.warn('Services subscribe fetch error:', err);
