@@ -1562,9 +1562,30 @@ export const DQSupabase = {
       else local.push(service);
       localStorage.setItem('dq_services', JSON.stringify(local));
       window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: local }));
-      await supabase.from('settings').upsert({
-        key: 'dq_services',
-        value: JSON.stringify(local)
+
+      let meta: any = {};
+      try {
+        if (service.tag && typeof service.tag === 'string' && service.tag.startsWith('{')) {
+          meta = JSON.parse(service.tag);
+        }
+      } catch (e) {}
+
+      const tagStr = JSON.stringify({
+        image: service.image || meta.image || '',
+        sla: service.sla || meta.sla || '30-45 mins',
+        ratio: service.ratio || meta.ratio || 'Standard',
+        slug: service.slug || meta.slug || '',
+        category: service.category || meta.category || ''
+      });
+
+      await supabase.from('services').upsert({
+        id: service.id,
+        name: service.title || service.name || service.id,
+        price: Number(service.price) || 359,
+        icon: service.icon || 'palette',
+        description: service.description || service.desc || '',
+        tag: tagStr,
+        features: [service.image || meta.image || '']
       });
     } catch (e) {
       console.warn('Supabase saveService error:', e);
@@ -1578,10 +1599,7 @@ export const DQSupabase = {
       local = local.filter(s => s.id !== serviceId);
       localStorage.setItem('dq_services', JSON.stringify(local));
       window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: local }));
-      await supabase.from('settings').upsert({
-        key: 'dq_services',
-        value: JSON.stringify(local)
-      });
+      await supabase.from('services').delete().eq('id', serviceId);
     } catch (e) {
       console.warn('Supabase deleteService error:', e);
     }
@@ -1591,14 +1609,37 @@ export const DQSupabase = {
     let local: any[] = [];
     try { local = JSON.parse(localStorage.getItem('dq_services') || '[]'); } catch (e) {}
     try {
-      const { data: setRow } = await supabase.from('settings').select('value').eq('key', 'dq_services').maybeSingle();
-      if (setRow && setRow.value) {
-        const parsed = typeof setRow.value === 'string' ? JSON.parse(setRow.value) : setRow.value;
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          localStorage.setItem('dq_services', JSON.stringify(parsed));
-          window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: parsed }));
-          return parsed;
-        }
+      const { data: dbRows, error } = await supabase.from('services').select('*');
+      if (!error && Array.isArray(dbRows) && dbRows.length > 0) {
+        const parsed = dbRows.map(row => {
+          let meta: any = {};
+          try {
+            if (row.tag && typeof row.tag === 'string' && row.tag.startsWith('{')) {
+              meta = JSON.parse(row.tag);
+            }
+          } catch (e) {}
+
+          const image = meta.image || (Array.isArray(row.features) && row.features[0] ? row.features[0] : '');
+
+          return {
+            id: row.id,
+            title: row.name || row.id,
+            name: row.name || row.id,
+            price: Number(row.price) || 359,
+            icon: row.icon || 'palette',
+            description: row.description || '',
+            desc: row.description || '',
+            sla: meta.sla || '30-45 mins',
+            ratio: meta.ratio || 'Standard',
+            slug: meta.slug || '',
+            category: meta.category || '',
+            image: image
+          };
+        });
+
+        localStorage.setItem('dq_services', JSON.stringify(parsed));
+        window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: parsed }));
+        return parsed;
       }
     } catch (e) {
       console.warn('Failed to fetch services from Supabase:', e);
@@ -1613,20 +1654,12 @@ export const DQSupabase = {
   subscribeServices(callback: (services: any[]) => void): () => void {
     let channel: any = null;
     try {
-      this.fetchServices().then(svcs => { if (svcs) callback(svcs); });
+      this.fetchServices().then(svcs => { if (svcs && svcs.length > 0) callback(svcs); });
       channel = supabase
-        .channel('realtime_settings_services_' + Math.random().toString(36).substring(2, 7))
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'key=eq.dq_services' }, (payload: any) => {
-          if (payload.new && payload.new.value) {
-            try {
-              const updated = typeof payload.new.value === 'string' ? JSON.parse(payload.new.value) : payload.new.value;
-              if (Array.isArray(updated)) {
-                localStorage.setItem('dq_services', JSON.stringify(updated));
-                window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: updated }));
-                callback(updated);
-              }
-            } catch (e) {}
-          }
+        .channel('realtime_services_' + Math.random().toString(36).substring(2, 7))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'services' }, async () => {
+          const fresh = await this.fetchServices();
+          if (fresh) callback(fresh);
         })
         .subscribe();
     } catch (e) {
@@ -1640,15 +1673,20 @@ export const DQSupabase = {
   async savePortfolioItem(item: any): Promise<void> {
     if (!item || !item.id) return;
     try {
-      let local: any[] = JSON.parse(localStorage.getItem('dq_portfolio') || '[]');
+      let local: any[] = JSON.parse(localStorage.getItem('dq_portfolio_items') || '[]');
       const idx = local.findIndex(p => p.id === item.id);
       if (idx !== -1) local[idx] = { ...local[idx], ...item };
       else local.unshift(item);
-      localStorage.setItem('dq_portfolio', JSON.stringify(local));
+      localStorage.setItem('dq_portfolio_items', JSON.stringify(local));
       window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: local }));
-      await supabase.from('settings').upsert({
-        key: 'dq_portfolio',
-        value: JSON.stringify(local)
+
+      await supabase.from('portfolio').upsert({
+        id: item.id,
+        title: item.title || '',
+        category: item.category || '',
+        designer: item.designer || '',
+        image: item.image || '',
+        tags: Array.isArray(item.tags) ? item.tags : [item.deliveryTime || '35m']
       });
     } catch (e) {
       console.warn('Supabase savePortfolio error:', e);
@@ -1658,14 +1696,11 @@ export const DQSupabase = {
   async deletePortfolioItem(itemId: string): Promise<void> {
     if (!itemId) return;
     try {
-      let local: any[] = JSON.parse(localStorage.getItem('dq_portfolio') || '[]');
+      let local: any[] = JSON.parse(localStorage.getItem('dq_portfolio_items') || '[]');
       local = local.filter(p => p.id !== itemId);
-      localStorage.setItem('dq_portfolio', JSON.stringify(local));
+      localStorage.setItem('dq_portfolio_items', JSON.stringify(local));
       window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: local }));
-      await supabase.from('settings').upsert({
-        key: 'dq_portfolio',
-        value: JSON.stringify(local)
-      });
+      await supabase.from('portfolio').delete().eq('id', itemId);
     } catch (e) {
       console.warn('Supabase deletePortfolio error:', e);
     }
@@ -1673,16 +1708,22 @@ export const DQSupabase = {
 
   async fetchPortfolio(): Promise<any[]> {
     let local: any[] = [];
-    try { local = JSON.parse(localStorage.getItem('dq_portfolio') || '[]'); } catch (e) {}
+    try { local = JSON.parse(localStorage.getItem('dq_portfolio_items') || '[]'); } catch (e) {}
     try {
-      const { data: setRow } = await supabase.from('settings').select('value').eq('key', 'dq_portfolio').maybeSingle();
-      if (setRow && setRow.value) {
-        const parsed = typeof setRow.value === 'string' ? JSON.parse(setRow.value) : setRow.value;
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          localStorage.setItem('dq_portfolio', JSON.stringify(parsed));
-          window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: parsed }));
-          return parsed;
-        }
+      const { data: dbRows, error } = await supabase.from('portfolio').select('*');
+      if (!error && Array.isArray(dbRows) && dbRows.length > 0) {
+        const parsed = dbRows.map(row => ({
+          id: row.id,
+          title: row.title || '',
+          category: row.category || '',
+          designer: row.designer || '',
+          image: row.image || '',
+          deliveryTime: Array.isArray(row.tags) && row.tags[0] ? row.tags[0] : '35m',
+          description: row.description || 'Verified Design Deliverable'
+        }));
+        localStorage.setItem('dq_portfolio_items', JSON.stringify(parsed));
+        window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: parsed }));
+        return parsed;
       }
     } catch (e) {
       console.warn('Failed to fetch portfolio from Supabase:', e);
@@ -1697,20 +1738,12 @@ export const DQSupabase = {
   subscribePortfolio(callback: (items: any[]) => void): () => void {
     let channel: any = null;
     try {
-      this.fetchPortfolio().then(items => { if (items) callback(items); });
+      this.fetchPortfolio().then(items => { if (items && items.length > 0) callback(items); });
       channel = supabase
-        .channel('realtime_settings_portfolio_' + Math.random().toString(36).substring(2, 7))
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'key=eq.dq_portfolio' }, (payload: any) => {
-          if (payload.new && payload.new.value) {
-            try {
-              const updated = typeof payload.new.value === 'string' ? JSON.parse(payload.new.value) : payload.new.value;
-              if (Array.isArray(updated)) {
-                localStorage.setItem('dq_portfolio', JSON.stringify(updated));
-                window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: updated }));
-                callback(updated);
-              }
-            } catch (e) {}
-          }
+        .channel('realtime_portfolio_' + Math.random().toString(36).substring(2, 7))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio' }, async () => {
+          const fresh = await this.fetchPortfolio();
+          if (fresh) callback(fresh);
         })
         .subscribe();
     } catch (e) {
