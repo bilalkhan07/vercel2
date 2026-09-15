@@ -53,7 +53,7 @@ export async function onRequest(context) {
       },
       body: JSON.stringify({
         from: "Design Quixo Operations <alerts@designquixo.in>",
-        to: ["designquixo@gmail.com", "alerts@designquixo.in"],
+        to: ["designquixo@gmail.com"],
         subject: `New Design Brief: #${cleanId} — ${serviceName} (Client: ${clientName})`,
         html: adminHtml,
         text: `New Design Brief #${cleanId} for ${serviceName}. Client: ${clientName} (+91 ${clientPhone}). Details: ${brief}`

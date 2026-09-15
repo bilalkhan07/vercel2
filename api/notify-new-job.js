@@ -147,8 +147,8 @@ export default async function handler(req, res) {
       console.warn('[notify-new-job] Supabase designers fetch note:', e?.message);
     }
 
-    // 4. ADMIN EMAILS - Always send dedicated Admin Alert
-    const adminEmails = ['designquixo@gmail.com', 'alerts@designquixo.in'];
+    // 4. ADMIN EMAILS - Always send dedicated Admin Alert (Sent ONLY to designquixo@gmail.com)
+    const adminEmails = ['designquixo@gmail.com'];
     const adminHtml = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><title>New Design Order Received: #${cleanId}</title></head>

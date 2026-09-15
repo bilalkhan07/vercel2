@@ -27,13 +27,7 @@ export async function onRequest(context) {
     const email = (body.email || '').toString().trim().toLowerCase();
     const code = (body.code || '').toString().trim();
 
-    if (code === '786786' || code === '123456') {
-      return new Response(JSON.stringify({ success: true, message: 'Email verified successfully!' }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
-    }
-
+    // OTP matching strictly against real dispatched code
     const stored = globalThis.dqOtpMap.get(email);
     if (stored && stored.code === code) {
       if (Date.now() > stored.expiresAt) {

@@ -112,14 +112,7 @@ export default async function handler(req, res) {
 
     const textContent = `Job Claim Alert:\n\nJob ID: #${cleanId}\nDesigner: ${cleanDesigner}\nClient: ${cleanClient}\nClaimed at: ${formattedTime} IST\n\nDesign Quixo Operations`;
 
-    // Send to alerts@designquixo.in and designquixo@gmail.com
-    await sendSingleEmail({
-      to: 'alerts@designquixo.in',
-      subject,
-      html,
-      text: textContent
-    });
-
+    // Send ONLY to designquixo@gmail.com
     await sendSingleEmail({
       to: 'designquixo@gmail.com',
       subject,

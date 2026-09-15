@@ -7,10 +7,10 @@
 (function() {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      if (localStorage.getItem('dq_icons_updated_v5') !== 'active') {
+      if (localStorage.getItem('dq_services_img_v7') !== 'active') {
         localStorage.removeItem('dq_services');
         localStorage.removeItem('dq_portfolio_items');
-        localStorage.setItem('dq_icons_updated_v5', 'active');
+        localStorage.setItem('dq_services_img_v7', 'active');
       }
     }
   } catch (e) {}
@@ -24,7 +24,7 @@ const DEFAULT_SERVICES = [
     sla: '30-45 mins',
     category: 'social',
     description: 'Instagram feeds, reels covers, carousel slides & promotional social media creatives.',
-    image: 'social_media.png',
+    image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80',
     icon: 'share-2',
     ratio: 'Square (1:1)'
   },
@@ -35,7 +35,7 @@ const DEFAULT_SERVICES = [
     sla: '30-45 mins',
     category: 'thumbnail',
     description: 'High-CTR clickable thumbnails with crisp cutouts, rim lighting & creator hooks.',
-    image: 'youtube.png',
+    image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
     icon: 'youtube',
     ratio: 'Landscape (16:9)'
   },
@@ -46,7 +46,7 @@ const DEFAULT_SERVICES = [
     sla: '45-60 mins',
     category: 'vector',
     description: 'Convert blurry JPEGs, logos or sketches into infinite-resolution SVG & EPS vectors.',
-    image: 'vector.png',
+    image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
     icon: 'pen-tool',
     ratio: 'Square (1:1)'
   },
@@ -57,7 +57,7 @@ const DEFAULT_SERVICES = [
     sla: '30-45 mins',
     category: 'print',
     description: 'Double-sided luxury business card layouts with bleed margins, CMYK print & QR codes.',
-    image: 'visiting.png',
+    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80',
     icon: 'credit-card',
     ratio: 'Print / Custom'
   },
@@ -68,7 +68,7 @@ const DEFAULT_SERVICES = [
     sla: '1-2 hours',
     category: 'branding',
     description: 'Unique, memorable brand marks crafted manually from scratch with complete vector palettes.',
-    image: 'logo.png',
+    image: 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80',
     icon: 'award',
     ratio: 'Square (1:1)'
   },
@@ -79,7 +79,7 @@ const DEFAULT_SERVICES = [
     sla: '1.5-2 hours',
     category: 'packaging',
     description: 'Die-cut accurate pouch designs, product labels, box wraps & compliant barcodes.',
-    image: 'label.png',
+    image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
     icon: 'package',
     ratio: 'Print / Custom'
   },
@@ -388,15 +388,15 @@ window.DQStore = {
             else if (s.id === 'packaging-design') s.icon = 'package';
             else if (s.id === 'custom-design' && (!s.icon || s.icon === 'sparkles')) s.icon = 'palette';
 
-            if (!s.image) {
-              if (s.id === 'social-media') s.image = 'social_media.png';
-              else if (s.id === 'youtube-thumbnail') s.image = 'youtube.png';
-              else if (s.id === 'vector-art') s.image = 'vector.png';
-              else if (s.id === 'visiting-card') s.image = 'visiting.png';
-              else if (s.id === 'logo-design') s.image = 'logo.png';
-              else if (s.id === 'packaging-design') s.image = 'label.png';
+            if (!s.image || s.image.includes('.png')) {
+              if (s.id === 'social-media') s.image = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';
+              else if (s.id === 'youtube-thumbnail') s.image = 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';
+              else if (s.id === 'vector-art') s.image = 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80';
+              else if (s.id === 'visiting-card') s.image = 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80';
+              else if (s.id === 'logo-design') s.image = 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80';
+              else if (s.id === 'packaging-design') s.image = 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80';
               else if (s.id === 'custom-design') s.image = 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&auto=format&fit=crop&q=80';
-              else s.image = 'social_media.png';
+              else s.image = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';
             }
             return s;
           });
@@ -546,18 +546,29 @@ window.DQStore = {
     const cleanTarget = cityKeyOrName.toString().toLowerCase().trim().replace(/[^a-z0-9]/g, '');
     if (!cleanTarget) return all;
 
-    const matched = all.filter(r => {
-      if (!r) return false;
-      const rCity = (r.city || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (rCity && (rCity === cleanTarget || rCity.includes(cleanTarget) || cleanTarget.includes(rCity))) return true;
+    const citySpecific = [];
+    const globalReviews = [];
 
-      // Also check if city is in role or review text
+    all.forEach(r => {
+      if (!r) return;
+      const rCity = (r.city || '').toString().toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      if (!rCity || rCity === 'allcities' || rCity === 'all' || rCity === 'global') {
+        globalReviews.push(r);
+        return;
+      }
+      if (rCity === cleanTarget || rCity.includes(cleanTarget) || cleanTarget.includes(rCity)) {
+        citySpecific.push(r);
+        return;
+      }
       const rRole = (r.role || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
       const rText = (r.review || r.text || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-      return rRole.includes(cleanTarget) || rText.includes(cleanTarget);
+      if (rRole.includes(cleanTarget) || rText.includes(cleanTarget)) {
+        citySpecific.push(r);
+        return;
+      }
     });
 
-    return matched;
+    return citySpecific.length > 0 ? [...citySpecific, ...globalReviews] : globalReviews;
   },
 
   saveReviews(items) {
@@ -571,7 +582,7 @@ window.DQStore = {
   getReviewById(revId) {
     if (!revId) return null;
     const list = this.getReviews();
-    return list.find(r => r.id === revId) || null;
+    return list.find(r => r.id === revId || String(r.id) === String(revId)) || null;
   },
 
   addReview(reviewData) {
@@ -595,7 +606,7 @@ window.DQStore = {
 
   updateReview(revId, updatedFields) {
     const list = this.getReviews();
-    const idx = list.findIndex(r => r.id === revId);
+    const idx = list.findIndex(r => r.id === revId || String(r.id) === String(revId));
     if (idx !== -1) {
       list[idx] = { ...list[idx], ...updatedFields };
       this.saveReviews(list);
@@ -607,7 +618,7 @@ window.DQStore = {
 
   deleteReview(revId) {
     const list = this.getReviews();
-    const filtered = list.filter(r => r.id !== revId);
+    const filtered = list.filter(r => r.id !== revId && String(r.id) !== String(revId));
     this.saveReviews(filtered);
     deleteReviewCloud(revId);
     return filtered;
@@ -975,13 +986,7 @@ window.DQStore = {
       if (stored !== null) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          let deleted = [];
-          try { deleted = JSON.parse(localStorage.getItem('dq_deleted_jobs') || '[]'); } catch(e) {}
-          const delSet = new Set(deleted.map(d => this.normalizeJobId(d)));
-          return this.deduplicateJobs(parsed).filter(j => {
-            const id = this.normalizeJobId(j.id || j.jobId);
-            return id && !delSet.has(id) && j.status !== 'Deleted';
-          });
+          return this.deduplicateJobs(parsed);
         }
       }
     } catch (e) {}
@@ -1020,24 +1025,11 @@ window.DQStore = {
     });
     localStorage.setItem('dq_live_jobs', JSON.stringify(jobs));
 
-    // 3. Dispatch to backend API
-    try {
-      fetch('/api/delete-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: normId })
-      }).catch(() => {});
-    } catch(e) {}
-
-    // 4. Dispatch to Supabase / Cloud if present
+    // 3. Dispatch to Supabase / Cloud if present
     const cloudDb = getCloudDb();
     if (cloudDb && typeof cloudDb.deleteJob === 'function') {
       cloudDb.deleteJob(normId);
     }
-
-    try {
-      window.dispatchEvent(new CustomEvent('dq_jobs_updated', { detail: jobs }));
-    } catch(e) {}
 
     return jobs.length < initialLen;
   },
@@ -1127,8 +1119,145 @@ window.DQStore = {
   },
 
   // Dynamic Time-Filtered Admin Financial Analytics (100% Original Value)
+  // Persistent Earnings Ledger Management
+  getEarningsLedger() {
+    try {
+      const stored = localStorage.getItem('dq_earnings_ledger');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch(e) {}
+    return [];
+  },
+
+  saveEarningsLedger(ledger) {
+    if (!Array.isArray(ledger)) return [];
+    localStorage.setItem('dq_earnings_ledger', JSON.stringify(ledger));
+    try {
+      window.dispatchEvent(new CustomEvent('dq_ledger_updated', { detail: ledger }));
+    } catch(e) {}
+    return ledger;
+  },
+
+  recordCompletedJobToLedger(job) {
+    if (!job) return null;
+    const normId = this.normalizeJobId(job.id || job.jobId);
+    if (!normId) return null;
+
+    const ledger = this.getEarningsLedger();
+    const existingIdx = ledger.findIndex(l => this.normalizeJobId(l.id || l.jobId) === normId);
+
+    const price = this.getJobPrice(job);
+    const designerCut = Math.round(price * 0.60);
+    const platformCut = price - designerCut;
+
+    const ledgerEntry = {
+      id: normId,
+      jobId: normId,
+      project: job.project || job.projectName || 'Graphic Design Request',
+      service: job.service || 'Design',
+      ratio: job.ratio || '1:1',
+      brief: job.brief || '',
+      price: price,
+      clientPhone: job.phone || job.whatsapp || '',
+      acceptedBy: Array.isArray(job.acceptedBy) ? job.acceptedBy : [],
+      completed: true,
+      designerCompleted: true,
+      adminCompleted: true,
+      status: job.status || 'Completed & Vector Delivered',
+      completedAt: job.completedAt || new Date().toISOString(),
+      createdAt: job.createdAt || job.time || new Date().toISOString(),
+      designerCut: designerCut,
+      platformCut: platformCut,
+      payoutStatus: (existingIdx !== -1 && ledger[existingIdx].payoutStatus) ? ledger[existingIdx].payoutStatus : 'Pending',
+      payoutPaidAt: (existingIdx !== -1 && ledger[existingIdx].payoutPaidAt) ? ledger[existingIdx].payoutPaidAt : null,
+      payoutAmount: designerCut
+    };
+
+    if (existingIdx !== -1) {
+      ledger[existingIdx] = { ...ledger[existingIdx], ...ledgerEntry };
+    } else {
+      ledger.unshift(ledgerEntry);
+    }
+
+    this.saveEarningsLedger(ledger);
+    return ledgerEntry;
+  },
+
+  updatePayoutStatusInLedger(jobId, payoutStatus, payoutAmount = null) {
+    if (!jobId) return false;
+    const normId = this.normalizeJobId(jobId);
+    const ledger = this.getEarningsLedger();
+    const idx = ledger.findIndex(l => this.normalizeJobId(l.id || l.jobId) === normId);
+
+    if (idx !== -1) {
+      ledger[idx].payoutStatus = payoutStatus;
+      if (payoutStatus === 'Paid' || payoutStatus === 'Amount Paid to Designer') {
+        ledger[idx].payoutStatus = 'Paid';
+        ledger[idx].payoutPaidAt = new Date().toISOString();
+        if (payoutAmount) ledger[idx].payoutAmount = payoutAmount;
+      } else {
+        ledger[idx].payoutStatus = 'Pending';
+      }
+      this.saveEarningsLedger(ledger);
+      return ledger[idx];
+    } else {
+      const activeJob = this.getJobById(jobId);
+      if (activeJob) {
+        const newEntry = this.recordCompletedJobToLedger(activeJob);
+        if (newEntry) {
+          return this.updatePayoutStatusInLedger(jobId, payoutStatus, payoutAmount);
+        }
+      }
+    }
+    return false;
+  },
+
+  getMergedJobsForEarnings() {
+    const activeJobs = this.getJobs() || [];
+    const ledger = this.getEarningsLedger() || [];
+
+    const seen = new Set();
+    const merged = [];
+
+    activeJobs.forEach(j => {
+      if (!j) return;
+      const normId = this.normalizeJobId(j.id || j.jobId);
+      if (!normId) return;
+      seen.add(normId);
+
+      const ledgerMatch = ledger.find(l => this.normalizeJobId(l.id || l.jobId) === normId);
+      if (ledgerMatch) {
+        const isPaid = ledgerMatch.payoutStatus === 'Paid' || j.payoutStatus === 'Paid' || ledgerMatch.payoutStatus === 'Amount Paid to Designer' || j.payoutStatus === 'Amount Paid to Designer';
+        merged.push({
+          ...j,
+          payoutStatus: isPaid ? 'Paid' : (ledgerMatch.payoutStatus || j.payoutStatus || 'Unpaid'),
+          payoutPaidAt: ledgerMatch.payoutPaidAt || j.payoutPaidAt || null,
+          payoutAmount: ledgerMatch.payoutAmount || Math.round(this.getJobPrice(j) * 0.60)
+        });
+      } else {
+        merged.push(j);
+      }
+    });
+
+    ledger.forEach(l => {
+      if (!l) return;
+      const normId = this.normalizeJobId(l.id || l.jobId);
+      if (!normId || seen.has(normId)) return;
+      seen.add(normId);
+      merged.push({
+        ...l,
+        completed: true,
+        status: l.status || 'Completed & Vector Delivered'
+      });
+    });
+
+    return merged;
+  },
+
   getFilteredAdminStats(timeFilter = 'all') {
-    const jobs = this.getJobs() || [];
+    const jobs = this.getMergedJobsForEarnings() || [];
     const now = new Date();
 
     const filteredJobs = jobs.filter(j => {
@@ -1200,7 +1329,7 @@ window.DQStore = {
   },
 
   getDesignerEarnings(designerIdentifier) {
-    const jobs = this.getJobs();
+    const jobs = this.getMergedJobsForEarnings();
     if (!designerIdentifier) return 0;
     const clean = designerIdentifier.toString().toLowerCase().replace(/[^0-9a-z]/g, '');
     

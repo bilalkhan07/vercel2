@@ -1805,18 +1805,7 @@
                 <p style="color:#64748b;font-size:12px;margin-top:16px;">Vector files are ready on the platform. Review from Admin Panel.</p>
               </div>`;
 
-              // Send to Admin
-              fetch('/api/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  to: 'alerts@designquixo.in',
-                  subject: `Design Delivered: Job #${cleanJobId} by ${dName} (Ready for Review)`,
-                  html: adminHtml,
-                  text: adminMsg
-                })
-              }).catch(() => {});
-
+              // Send to Admin (Sent ONLY to designquixo@gmail.com)
               fetch('/api/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3141,7 +3130,7 @@
           </div>
 
           <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 text-left space-y-2 leading-relaxed">
-            <p>Your claim has been recorded and emailed to the Operations Desk (<span class="font-mono text-slate-800">alerts@designquixo.in</span>).</p>
+            <p>Your claim has been recorded and notified to the Operations Desk (<span class="font-mono text-slate-800">designquixo@gmail.com</span>).</p>
             <p>Please contact the Operations Desk on WhatsApp to discuss project details, get raw client assets, and coordinate draft submission.</p>
           </div>
 

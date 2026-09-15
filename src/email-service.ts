@@ -104,84 +104,16 @@ export const EmailService = {
     }, 6000);
   },
 
-  // 1. Send Registration Confirmation Email to Designer
+  // 1. Designer registration received email disabled as per policy (saves email count)
   async sendRegistrationEmailToDesigner(designer: { name: string; email: string; phone: string }): Promise<boolean> {
-    const cleanEmail = (designer.email || '').toString().trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.endsWith('@designquixo.com') || cleanEmail.endsWith('@example.com') || cleanEmail.includes('undefined')) {
-      console.warn('Skipping registration email dispatch: invalid/dummy email', designer.email);
-      return false;
-    }
-
-    const subject = `Design Quixo — Registration Received`;
-    const cleanPhone = designer.phone.replace(/[^0-9]/g, '').slice(-10);
-
-    const htmlBody = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${subject}</title>
-</head>
-<body style="margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; background-color: #ffffff; line-height: 1.6;">
-  <div style="max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 28px;">
-    <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0 0 16px 0;">DESIGN QUIXO</h2>
-    <p style="font-size: 15px; font-weight: 600; color: #0f172a; margin: 0 0 10px 0;">Hello ${designer.name},</p>
-    <p style="font-size: 14px; color: #334155; margin: 0 0 14px 0;">
-      Thank you for registering on Design Quixo. Your application and signed Creator Agreement have been successfully received and are under review by our team (review timeline: 2 to 6 hours).
-    </p>
-    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin: 16px 0; font-size: 13px;">
-      <p style="margin: 0 0 6px 0;"><strong>Application Status:</strong> Under Verification (Pending Review)</p>
-      <p style="margin: 0 0 6px 0;"><strong>Registered Email:</strong> ${designer.email}</p>
-      <p style="margin: 0;"><strong>Registered Mobile:</strong> +91 ${cleanPhone}</p>
-    </div>
-    <p style="font-size: 13px; color: #475569; margin: 16px 0 0 0;">
-      Once approved, you will be able to claim live job briefs directly from your Creator Dashboard.
-    </p>
-    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 14px 0;" />
-    <p style="font-size: 11px; color: #94a3b8; margin: 0;">
-      Design Quixo India • Plot 12, Dwarka, New Delhi • &copy; ${new Date().getFullYear()}
-    </p>
-  </div>
-</body>
-</html>`;
-
-    // Dispatch real email via /api/send-email
-    let sentSuccess = true;
-    try {
-      await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: designer.email,
-          subject,
-          html: htmlBody,
-          text: `Hello ${designer.name},\n\nThank you for registering on Design Quixo. Your application and signed Creator Agreement have been received and are under review (timeline: 2 to 6 hours).\n\nDesign Quixo India`
-        })
-      });
-    } catch (err) {
-      console.warn('Registration email dispatch notice:', err);
-      sentSuccess = false;
-    }
-
-    // Log email record
-    this.logEmail({
-      type: 'designer_registration',
-      to: designer.email,
-      subject,
-      data: designer
-    });
-
-    this.showNotificationToast(
-      `Registration Email Sent to ${designer.name}`,
-      `Confirmation email dispatched to registered email.`,
-      'info'
-    );
-
-    return sentSuccess;
+    // Designer gets no email on registration submit. They only receive email on Account Approval, Login OTP, and Job Updates.
+    console.log('[Email Policy] Skipped registration-received email for designer to optimize email quota:', designer.email);
+    return true;
   },
 
-  // 2. Send Admin Notification Email for New Designer Application
+  // 2. Send Admin Notification Email for New Designer Application (Sent ONLY to designquixo@gmail.com)
   async sendNewRegistrationAlertToAdmin(designer: { name: string; email: string; phone: string; portfolio?: string; skills?: string }): Promise<boolean> {
-    const adminEmail = 'alerts@designquixo.in';
+    const adminEmail = 'designquixo@gmail.com';
     const cleanPhone = designer.phone.replace(/[^0-9]/g, '').slice(-10);
     const subject = `New Creator Application: ${designer.name} (+91 ${cleanPhone})`;
 
@@ -214,38 +146,26 @@ export const EmailService = {
 </body>
 </html>`;
 
-    // Dispatch real email to Admin inboxes
+    // Dispatch real email ONLY to designquixo@gmail.com
     try {
       const textMsg = `New Creator Application:\n\nName: ${designer.name}\nEmail: ${designer.email}\nPhone: +91 ${cleanPhone}\nPortfolio: ${designer.portfolio || 'N/A'}\nSkills: ${designer.skills || 'Design'}\n\nDesign Quixo Operations Alert`;
-      await Promise.all([
-        fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: adminEmail,
-            subject,
-            html: htmlBody,
-            text: textMsg
-          })
-        }),
-        fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: 'designquixo@gmail.com',
-            subject,
-            html: htmlBody,
-            text: textMsg
-          })
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: 'designquixo@gmail.com',
+          subject,
+          html: htmlBody,
+          text: textMsg
         })
-      ]);
+      });
     } catch (err) {
       console.warn('Admin registration alert dispatch notice:', err);
     }
 
     this.logEmail({
       type: 'admin_alert',
-      to: adminEmail,
+      to: 'designquixo@gmail.com',
       subject,
       data: designer
     });

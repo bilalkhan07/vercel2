@@ -575,11 +575,11 @@
               </div>
               <div>
                 <label class="block font-bold text-slate-700 uppercase tracking-wider mb-2">Current Master Password</label>
-                <input type="text" id="admin-current-pass" readonly class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 font-mono outline-none" />
+                <input type="password" id="admin-current-pass" readonly value="••••••••••••" class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-700 font-mono outline-none tracking-[3px]" />
               </div>
               <div>
                 <label class="block font-bold text-slate-700 uppercase tracking-wider mb-2">New Admin Password</label>
-                <input type="text" id="admin-new-pass" placeholder="Enter new password (e.g. @Bilal@786)" class="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 focus:bg-white rounded-xl p-3.5 text-xs text-slate-900 font-mono outline-none" />
+                <input type="password" id="admin-new-pass" placeholder="Enter new master password (min 6 characters)" class="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 focus:bg-white rounded-xl p-3.5 text-xs text-slate-900 font-mono outline-none" />
                 <p class="text-[11px] text-slate-400 mt-1">Leave blank if you only want to change username.</p>
               </div>
 
@@ -3251,10 +3251,8 @@
       const adminCredsAlert = document.getElementById('admin-creds-alert');
 
       const activeAdminUser = localStorage.getItem('dq_admin_username') || 'admin@designquixobilal';
-      const activeAdminPass = localStorage.getItem('dq_admin_password') || '@Bilal@786';
-
       adminUsernameInput.value = activeAdminUser;
-      currentPassInput.value = activeAdminPass;
+      if (currentPassInput) currentPassInput.value = '••••••••••••';
 
       let adminOtpSent = false;
       let pendingAdminChanges = null;
@@ -3285,13 +3283,13 @@
       }
 
       async function dispatchAdminOtp() {
-        setAdminCredsAlert('Dispatching 6-digit authorization code to registered security email...', 'info');
+        setAdminCredsAlert('Dispatching 6-digit authorization code to designquixo@gmail.com...', 'info');
         try {
           const res = await fetch('/api/email-otp-send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: 'alerts@designquixo.in',
+              email: 'designquixo@gmail.com',
               userName: 'Bilal (Platform Admin)',
               purpose: 'Admin Password Change'
             })
@@ -3331,9 +3329,9 @@
         }
 
         const currentU = localStorage.getItem('dq_admin_username') || 'admin@designquixobilal';
-        const currentP = localStorage.getItem('dq_admin_password') || '@Bilal@786';
+        const currentP = localStorage.getItem('dq_admin_password') || '';
 
-        if (newU === currentU && (!newP || newP === currentP)) {
+        if (newU === currentU && !newP) {
           setAdminCredsAlert('No changes detected in username or password.', 'info');
           return;
         }
@@ -3381,7 +3379,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: 'alerts@designquixo.in',
+              email: 'designquixo@gmail.com',
               code: code
             })
           });
