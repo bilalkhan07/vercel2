@@ -7,10 +7,10 @@
 (function() {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      if (localStorage.getItem('dq_icons_updated_v5') !== 'active') {
+      if (localStorage.getItem('dq_services_v12') !== 'active') {
         localStorage.removeItem('dq_services');
         localStorage.removeItem('dq_portfolio_items');
-        localStorage.setItem('dq_icons_updated_v5', 'active');
+        localStorage.setItem('dq_services_v12', 'active');
       }
     }
   } catch (e) {}
@@ -24,8 +24,9 @@ const DEFAULT_SERVICES = [
     sla: '30-45 mins',
     category: 'social',
     description: 'Instagram feeds, reels covers, carousel slides & promotional social media creatives.',
-    image: 'social_media.png',
+    image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80',
     icon: 'share-2',
+    slug: 'social-media-designer',
     ratio: 'Square (1:1)'
   },
   {
@@ -35,8 +36,9 @@ const DEFAULT_SERVICES = [
     sla: '30-45 mins',
     category: 'thumbnail',
     description: 'High-CTR clickable thumbnails with crisp cutouts, rim lighting & creator hooks.',
-    image: 'youtube.png',
+    image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
     icon: 'youtube',
+    slug: 'youtube-thumbnail-designer',
     ratio: 'Landscape (16:9)'
   },
   {
@@ -46,8 +48,9 @@ const DEFAULT_SERVICES = [
     sla: '45-60 mins',
     category: 'vector',
     description: 'Convert blurry JPEGs, logos or sketches into infinite-resolution SVG & EPS vectors.',
-    image: 'vector.png',
+    image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
     icon: 'pen-tool',
+    slug: 'vector-art-specialist',
     ratio: 'Square (1:1)'
   },
   {
@@ -57,8 +60,9 @@ const DEFAULT_SERVICES = [
     sla: '30-45 mins',
     category: 'print',
     description: 'Double-sided luxury business card layouts with bleed margins, CMYK print & QR codes.',
-    image: 'visiting.png',
+    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80',
     icon: 'credit-card',
+    slug: 'visiting-card-designer',
     ratio: 'Print / Custom'
   },
   {
@@ -68,8 +72,9 @@ const DEFAULT_SERVICES = [
     sla: '1-2 hours',
     category: 'branding',
     description: 'Unique, memorable brand marks crafted manually from scratch with complete vector palettes.',
-    image: 'logo.png',
-    icon: 'award',
+    image: 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80',
+    icon: 'crown',
+    slug: 'logo-designer',
     ratio: 'Square (1:1)'
   },
   {
@@ -79,19 +84,45 @@ const DEFAULT_SERVICES = [
     sla: '1.5-2 hours',
     category: 'packaging',
     description: 'Die-cut accurate pouch designs, product labels, box wraps & compliant barcodes.',
-    image: 'label.png',
+    image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
     icon: 'package',
+    slug: 'packaging-label-designer',
+    ratio: 'Print / Custom'
+  },
+  {
+    id: 'flyer-design',
+    title: 'Flyers & Posters',
+    price: 449,
+    sla: '45-60 mins',
+    category: 'print',
+    description: 'Event notices, food menus, real estate promotional flyers, and corporate handouts.',
+    image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=700&auto=format&fit=crop&q=80',
+    icon: 'file-text',
+    slug: 'flyer-poster-designer',
+    ratio: 'Print / Custom'
+  },
+  {
+    id: 'brochure-design',
+    title: 'Brochures & Catalogs',
+    price: 699,
+    sla: '1.5-2 hours',
+    category: 'print',
+    description: 'Bi-fold, tri-fold, and multi-page corporate marketing decks and product catalogs.',
+    image: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=700&auto=format&fit=crop&q=80',
+    icon: 'book-open',
+    slug: 'brochure-catalog-designer',
     ratio: 'Print / Custom'
   },
   {
     id: 'custom-design',
-    title: 'Custom Graphic Design',
-    price: 499,
-    sla: '45-60 mins',
+    title: 'All Graphic Design',
+    price: 359,
+    sla: '30-45 mins',
     category: 'custom',
     description: 'Bespoke posters, brochures, hoardings, standees, menus, merchandise, or any special design request.',
     image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&auto=format&fit=crop&q=80',
-    icon: 'palette',
+    icon: 'layout-grid',
+    slug: 'graphic-designer',
     ratio: 'Custom / As Required'
   }
 ];
@@ -264,6 +295,45 @@ function deleteServiceCloud(serviceId) {
   }
 }
 
+// Background auto-listener for cloud services sync
+function initCloudServicesSync() {
+  if (typeof window === 'undefined') return;
+  const setupSync = () => {
+    const db = getCloudDb();
+    if (db && typeof db.subscribeServices === 'function') {
+      try {
+        db.subscribeServices((liveServices) => {
+          if (Array.isArray(liveServices) && liveServices.length > 0) {
+            localStorage.setItem('dq_services', JSON.stringify(liveServices));
+            window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: liveServices }));
+          }
+        });
+      } catch (e) {}
+    }
+    if (db && typeof db.fetchServices === 'function') {
+      try {
+        db.fetchServices().then((liveServices) => {
+          if (Array.isArray(liveServices) && liveServices.length > 0) {
+            localStorage.setItem('dq_services', JSON.stringify(liveServices));
+            window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: liveServices }));
+          }
+        }).catch(() => {});
+      } catch(e) {}
+    }
+  };
+
+  setupSync();
+  setTimeout(setupSync, 800);
+  setTimeout(setupSync, 2500);
+}
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCloudServicesSync);
+  } else {
+    initCloudServicesSync();
+  }
+}
+
 function syncPortfolioCloud(item) {
   if (typeof window === 'undefined' || !item || !item.id) return;
   const db = getCloudDb();
@@ -363,40 +433,20 @@ window.DQStore = {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Check if custom-design exists in parsed, if not append it
-          if (!parsed.some(s => s.id === 'custom-design')) {
-            parsed.push({
-              id: 'custom-design',
-              title: 'Custom Graphic Design',
-              price: 499,
-              sla: '45-60 mins',
-              category: 'custom',
-              description: 'Bespoke posters, brochures, hoardings, standees, menus, merchandise, or any special design request.',
-              image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&auto=format&fit=crop&q=80',
-              icon: 'sparkles',
-              ratio: 'Custom / As Required'
-            });
-            localStorage.setItem('dq_services', JSON.stringify(parsed));
-          }
-          // Preserve custom/admin changed images; fallback to default if empty & enforce proper relative icons
           return parsed.map(s => {
-            if (s.id === 'youtube-thumbnail') s.icon = 'youtube';
-            else if (s.id === 'logo-design') s.icon = 'award';
-            else if (s.id === 'social-media') s.icon = 'share-2';
-            else if (s.id === 'vector-art') s.icon = 'pen-tool';
-            else if (s.id === 'visiting-card') s.icon = 'credit-card';
-            else if (s.id === 'packaging-design') s.icon = 'package';
-            else if (s.id === 'custom-design' && (!s.icon || s.icon === 'sparkles')) s.icon = 'palette';
-
-            if (!s.image) {
-              if (s.id === 'social-media') s.image = 'social_media.png';
-              else if (s.id === 'youtube-thumbnail') s.image = 'youtube.png';
-              else if (s.id === 'vector-art') s.image = 'vector.png';
-              else if (s.id === 'visiting-card') s.image = 'visiting.png';
-              else if (s.id === 'logo-design') s.image = 'logo.png';
-              else if (s.id === 'packaging-design') s.image = 'label.png';
-              else if (s.id === 'custom-design') s.image = 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&auto=format&fit=crop&q=80';
-              else s.image = 'social_media.png';
+            // Assign nice fallback icons if missing
+            if (!s.icon) {
+              const id = (s.id || s.category || '').toLowerCase();
+              if (id.includes('youtube') || id.includes('thumbnail')) s.icon = 'youtube';
+              else if (id.includes('logo') || id.includes('branding')) s.icon = 'award';
+              else if (id.includes('social')) s.icon = 'share-2';
+              else if (id.includes('vector')) s.icon = 'pen-tool';
+              else if (id.includes('visiting') || id.includes('card')) s.icon = 'credit-card';
+              else if (id.includes('pack') || id.includes('label')) s.icon = 'package';
+              else s.icon = 'palette';
+            }
+            if (!s.image || s.image.trim() === '') {
+              s.image = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';
             }
             return s;
           });
@@ -404,6 +454,15 @@ window.DQStore = {
       }
     } catch (e) {}
     localStorage.setItem('dq_services', JSON.stringify(DEFAULT_SERVICES));
+    return DEFAULT_SERVICES;
+  },
+
+  resetServicesToDefault() {
+    localStorage.setItem('dq_services', JSON.stringify(DEFAULT_SERVICES));
+    window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: DEFAULT_SERVICES }));
+    if (Array.isArray(DEFAULT_SERVICES)) {
+      DEFAULT_SERVICES.forEach(s => syncServiceCloud(s));
+    }
     return DEFAULT_SERVICES;
   },
 
