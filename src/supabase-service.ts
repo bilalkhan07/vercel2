@@ -1,6 +1,5 @@
 // Design Quixo High-Performance Supabase Realtime Service
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import DQFirebase from './firebase-service';
 
 const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
 
@@ -1552,48 +1551,174 @@ export const DQSupabase = {
   },
 
   // ==========================================
-  // 3. SERVICES / PRODUCTS SYNC (Supabase)
+  // 3. SERVICES / PRODUCTS SYNC (Pure Supabase)
   // ==========================================
   async saveService(service: any): Promise<void> {
-    return DQFirebase.saveService(service);
+    if (!service || !service.id) return;
+    try {
+      let local: any[] = JSON.parse(localStorage.getItem('dq_services') || '[]');
+      const idx = local.findIndex(s => s.id === service.id);
+      if (idx !== -1) local[idx] = { ...local[idx], ...service };
+      else local.push(service);
+      localStorage.setItem('dq_services', JSON.stringify(local));
+      window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: local }));
+      await supabase.from('settings').upsert({
+        key: 'dq_services',
+        value: JSON.stringify(local)
+      });
+    } catch (e) {
+      console.warn('Supabase saveService error:', e);
+    }
   },
 
   async deleteService(serviceId: string): Promise<void> {
-    return DQFirebase.deleteService(serviceId);
+    if (!serviceId) return;
+    try {
+      let local: any[] = JSON.parse(localStorage.getItem('dq_services') || '[]');
+      local = local.filter(s => s.id !== serviceId);
+      localStorage.setItem('dq_services', JSON.stringify(local));
+      window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: local }));
+      await supabase.from('settings').upsert({
+        key: 'dq_services',
+        value: JSON.stringify(local)
+      });
+    } catch (e) {
+      console.warn('Supabase deleteService error:', e);
+    }
   },
 
   async fetchServices(): Promise<any[]> {
-    return DQFirebase.fetchServices();
+    let local: any[] = [];
+    try { local = JSON.parse(localStorage.getItem('dq_services') || '[]'); } catch (e) {}
+    try {
+      const { data: setRow } = await supabase.from('settings').select('value').eq('key', 'dq_services').maybeSingle();
+      if (setRow && setRow.value) {
+        const parsed = typeof setRow.value === 'string' ? JSON.parse(setRow.value) : setRow.value;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localStorage.setItem('dq_services', JSON.stringify(parsed));
+          window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: parsed }));
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch services from Supabase:', e);
+    }
+    return local;
   },
 
   async getServices(): Promise<any[]> {
-    return DQFirebase.fetchServices();
+    return this.fetchServices();
   },
 
   subscribeServices(callback: (services: any[]) => void): () => void {
-    const unsub = DQFirebase.subscribeServices(callback);
-    return () => unsub();
+    let channel: any = null;
+    try {
+      this.fetchServices().then(svcs => { if (svcs) callback(svcs); });
+      channel = supabase
+        .channel('realtime_settings_services_' + Math.random().toString(36).substring(2, 7))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'key=eq.dq_services' }, (payload: any) => {
+          if (payload.new && payload.new.value) {
+            try {
+              const updated = typeof payload.new.value === 'string' ? JSON.parse(payload.new.value) : payload.new.value;
+              if (Array.isArray(updated)) {
+                localStorage.setItem('dq_services', JSON.stringify(updated));
+                window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: updated }));
+                callback(updated);
+              }
+            } catch (e) {}
+          }
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn('Supabase subscribeServices error:', e);
+    }
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   },
 
   async savePortfolioItem(item: any): Promise<void> {
-    return DQFirebase.savePortfolioItem(item);
+    if (!item || !item.id) return;
+    try {
+      let local: any[] = JSON.parse(localStorage.getItem('dq_portfolio') || '[]');
+      const idx = local.findIndex(p => p.id === item.id);
+      if (idx !== -1) local[idx] = { ...local[idx], ...item };
+      else local.unshift(item);
+      localStorage.setItem('dq_portfolio', JSON.stringify(local));
+      window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: local }));
+      await supabase.from('settings').upsert({
+        key: 'dq_portfolio',
+        value: JSON.stringify(local)
+      });
+    } catch (e) {
+      console.warn('Supabase savePortfolio error:', e);
+    }
   },
 
   async deletePortfolioItem(itemId: string): Promise<void> {
-    return DQFirebase.deletePortfolioItem(itemId);
+    if (!itemId) return;
+    try {
+      let local: any[] = JSON.parse(localStorage.getItem('dq_portfolio') || '[]');
+      local = local.filter(p => p.id !== itemId);
+      localStorage.setItem('dq_portfolio', JSON.stringify(local));
+      window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: local }));
+      await supabase.from('settings').upsert({
+        key: 'dq_portfolio',
+        value: JSON.stringify(local)
+      });
+    } catch (e) {
+      console.warn('Supabase deletePortfolio error:', e);
+    }
   },
 
   async fetchPortfolio(): Promise<any[]> {
-    return DQFirebase.fetchPortfolio();
+    let local: any[] = [];
+    try { local = JSON.parse(localStorage.getItem('dq_portfolio') || '[]'); } catch (e) {}
+    try {
+      const { data: setRow } = await supabase.from('settings').select('value').eq('key', 'dq_portfolio').maybeSingle();
+      if (setRow && setRow.value) {
+        const parsed = typeof setRow.value === 'string' ? JSON.parse(setRow.value) : setRow.value;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          localStorage.setItem('dq_portfolio', JSON.stringify(parsed));
+          window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: parsed }));
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch portfolio from Supabase:', e);
+    }
+    return local;
   },
 
   async getPortfolio(): Promise<any[]> {
-    return DQFirebase.fetchPortfolio();
+    return this.fetchPortfolio();
   },
 
   subscribePortfolio(callback: (items: any[]) => void): () => void {
-    const unsub = DQFirebase.subscribePortfolio(callback);
-    return () => unsub();
+    let channel: any = null;
+    try {
+      this.fetchPortfolio().then(items => { if (items) callback(items); });
+      channel = supabase
+        .channel('realtime_settings_portfolio_' + Math.random().toString(36).substring(2, 7))
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'key=eq.dq_portfolio' }, (payload: any) => {
+          if (payload.new && payload.new.value) {
+            try {
+              const updated = typeof payload.new.value === 'string' ? JSON.parse(payload.new.value) : payload.new.value;
+              if (Array.isArray(updated)) {
+                localStorage.setItem('dq_portfolio', JSON.stringify(updated));
+                window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: updated }));
+                callback(updated);
+              }
+            } catch (e) {}
+          }
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn('Supabase subscribePortfolio error:', e);
+    }
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   },
 
   // ==========================================
