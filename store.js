@@ -298,20 +298,23 @@ function deleteServiceCloud(serviceId) {
 // Background auto-listener for cloud services sync
 function initCloudServicesSync() {
   if (typeof window === 'undefined') return;
+  let attempts = 0;
+  let syncInitialized = false;
+
   const setupSync = () => {
+    if (syncInitialized) return;
     const db = getCloudDb();
-    if (db && typeof db.subscribeServices === 'function') {
-      try {
-        db.subscribeServices((liveServices) => {
-          if (Array.isArray(liveServices) && liveServices.length > 0) {
-            localStorage.setItem('dq_services', JSON.stringify(liveServices));
-            window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: liveServices }));
-          }
-        });
-      } catch (e) {}
-    }
     if (db && typeof db.fetchServices === 'function') {
+      syncInitialized = true;
       try {
+        if (typeof db.subscribeServices === 'function') {
+          db.subscribeServices((liveServices) => {
+            if (Array.isArray(liveServices) && liveServices.length > 0) {
+              localStorage.setItem('dq_services', JSON.stringify(liveServices));
+              window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: liveServices }));
+            }
+          });
+        }
         db.fetchServices().then((liveServices) => {
           if (Array.isArray(liveServices) && liveServices.length > 0) {
             localStorage.setItem('dq_services', JSON.stringify(liveServices));
@@ -323,8 +326,13 @@ function initCloudServicesSync() {
   };
 
   setupSync();
-  setTimeout(setupSync, 800);
-  setTimeout(setupSync, 2500);
+  const interval = setInterval(() => {
+    attempts++;
+    setupSync();
+    if (syncInitialized || attempts > 20) {
+      clearInterval(interval);
+    }
+  }, 400);
 }
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') {
