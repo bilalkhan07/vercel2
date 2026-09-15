@@ -1,0 +1,30 @@
+<div id="city-services-grid"></div>
+<script>
+const currentCityName = 'Indore';
+const currentCityKey = 'indore';
+window.DQStore = {
+  getServices: () => [
+    { id: 'custom-1', title: 'My Service', image: 'data:image/webp;base64,UklGRqAAAAA', category: 'custom-design' }
+  ],
+  renderIconHtml: () => '<svg></svg>'
+};
+function getCityClientBadgeIcon() { return '<svg></svg>'; }
+
+function renderCityDynamicContent() {
+  const srvContainer = document.getElementById('city-services-grid');
+  if (srvContainer) {
+    let services = window.DQStore.getServices();
+    const slugMap = { 'custom-design': 'graphic-designer' };
+    srvContainer.innerHTML = services.map(s => {
+      const price = s.price || 359;
+      const sla = s.sla || '30-45 mins';
+      const img = s.image;
+      const targetSlug = s.slug || slugMap[s.id] || slugMap[s.category];
+      const linkUrl = targetSlug ? (targetSlug + '-in-' + currentCityKey + '.html') : 'request.html';
+      return '<img src="' + img + '" />';
+    }).join('');
+    console.log("RENDERED HTML:", srvContainer.innerHTML);
+  }
+}
+renderCityDynamicContent();
+</script>
