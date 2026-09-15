@@ -1143,7 +1143,7 @@
               localStorage.setItem('dq_current_user', JSON.stringify(adminUser));
               if (db && typeof db.logUserLogin === 'function') {
                 await db.logUserLogin({
-                  phone: '7869396378',
+                  phone: '8602420897',
                   name: adminUser.name,
                   role: 'admin',
                   status: 'Google OAuth Admin Sign-in'
@@ -1265,193 +1265,47 @@
             return `${u.substring(0, 2)}***${u.slice(-1)}@${d}`;
           };
 
-          // 1. Check Admin Credentials (Default: admin@designquixobilal / @Bilal@786)
-          const storedAdminPass = localStorage.getItem('dq_admin_password') || '@Bilal@786';
-          const storedAdminUser = (localStorage.getItem('dq_admin_username') || 'admin@designquixobilal').toLowerCase().trim();
-
-          const isAdminIdentifier = (
-            lowerId === 'admin@designquixobilal' ||
-            lowerId === 'admin' ||
-            lowerId === 'superadmin'  ||
-            lowerId === 'admin@designquixo.in' ||
-            lowerId === 'designquixo@gmail.com' ||
-            lowerId === 'admin@designquixo.com' ||
-            lowerId === 'alerts@designquixo.in' ||
-            lowerId === storedAdminUser
-          );
-
-          const isAdminPassMatch = (
-            enteredPass === '@Bilal@786' ||
-            enteredPass === '@Bilal@777' ||
-            enteredPass === '@Bilal@8602420897@7' ||
-            
-            enteredPass === '7861' ||
-            enteredPass === storedAdminPass
-          );
-
+          // SECURE BACKEND AUTHENTICATION (All passwords & admin credentials verified server-side)
           let targetUser = null;
+          try {
+            let localDesignersBackup = null;
+            try {
+              const reg = (window.DQStore && typeof window.DQStore.getRegisteredDesigners === 'function') ? window.DQStore.getRegisteredDesigners() : JSON.parse(localStorage.getItem('dq_designers') || '[]');
+              const curr = JSON.parse(localStorage.getItem('dq_current_user') || 'null');
+              localDesignersBackup = { registered: reg, current: curr };
+            } catch(e) {}
 
-          if (isAdminIdentifier && isAdminPassMatch) {
-            targetUser = {
-              role: 'admin',
-              name: 'Master Administrator',
-              identifier: 'admin@designquixobilal',
-              phone: '8602420897',
-              email: 'designquixo@gmail.com',
-              displayLabel: 'Registered Administrator'
-            };
-          } else {
-            // 2. Lookup Designer by Phone or Email
-            const isEmailInput = lowerId.includes('@');
-            const clean10 = isEmailInput ? '' : get10DigitPhone(identifier);
+            const authRes = await fetch('/api/verify-login-credentials', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ identifier, password: enteredPass, localBackup: localDesignersBackup })
+            });
+            const authData = await authRes.json();
 
-            let deletedDesigners = [];
-            try { deletedDesigners = JSON.parse(localStorage.getItem('dq_deleted_designers') || '[]'); } catch(e) {}
-            if (clean10 && deletedDesigners.includes(clean10)) {
+            if (!authRes.ok || !authData || !authData.success) {
               btnLoginSubmit.disabled = false;
               btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
               lucide.createIcons();
-              setLoginAlert(`Account Notice: This designer account (+91 ${clean10}) was removed by administrator.`, 'error');
+              setLoginAlert(authData?.message || 'Invalid credentials entered. Please verify your details and try again.', 'error');
               return;
             }
 
-            const db = await getSupabaseService();
-            let designer = null;
+            targetUser = authData.user;
+          } catch (netErr) {
+            console.error('Server auth verification network error:', netErr);
+            btnLoginSubmit.disabled = false;
+            btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
+            lucide.createIcons();
+            setLoginAlert('Network error connecting to authentication server. Please check your internet connection and try again.', 'error');
+            return;
+          }
 
-            if (clean10 && clean10.length === 10) {
-              // Phone Number entered: Look up registered designer record
-              if (db && typeof db.getDesigners === 'function') {
-                try {
-                  const list = await db.getDesigners();
-                  designer = (list || []).find(d => 
-                    get10DigitPhone(d.phone) === clean10 || 
-                    get10DigitPhone(d.identifier) === clean10 || 
-                    get10DigitPhone(d.id) === clean10
-                  );
-                } catch(e) {}
-              }
-
-              if (!designer) {
-                let registeredDesigners = [];
-                try { registeredDesigners = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]'); } catch(e) {}
-                designer = registeredDesigners.find(d => 
-                  get10DigitPhone(d.phone) === clean10 || 
-                  get10DigitPhone(d.identifier) === clean10 || 
-                  get10DigitPhone(d.id) === clean10
-                );
-              }
-
-              // IF NO ACCOUNT FOUND BY PHONE: Show clean error message
-              if (!designer) {
-                btnLoginSubmit.disabled = false;
-                btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-                lucide.createIcons();
-                setLoginAlert(`No account found registered with phone number <strong>+91 ${clean10}</strong>.<br/><span class="text-[11px] font-normal">Please verify your number or <button type="button" onclick="document.getElementById('tab-signup-btn').click()" class="text-blue-600 font-bold underline cursor-pointer">Join as Designer</button> to apply.</span>`, 'error');
-                return;
-              }
-
-              // Account found: check password strictly against current account password
-              const expPass = (designer.password || '').toString().trim();
-              if (expPass && expPass !== enteredPass) {
-                btnLoginSubmit.disabled = false;
-                btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-                lucide.createIcons();
-                setLoginAlert('Incorrect password entered for this account. Please verify and try again.', 'error');
-                return;
-              }
-
-              let targetEmail = designer.email || (designer.identifier && designer.identifier.includes('@') ? designer.identifier : '');
-
-              if (!targetEmail || !targetEmail.includes('@')) {
-                try {
-                  const registeredDesigners = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]');
-                  const localMatch = registeredDesigners.find(d => get10DigitPhone(d.phone || d.identifier) === clean10);
-                  if (localMatch && localMatch.email && localMatch.email.includes('@')) {
-                    targetEmail = localMatch.email;
-                  }
-                } catch(e) {}
-              }
-
-              if (!targetEmail || !targetEmail.includes('@')) {
-                try {
-                  const curr = JSON.parse(localStorage.getItem('dq_current_user') || '{}');
-                  if (curr && curr.email && curr.email.includes('@')) {
-                    targetEmail = curr.email;
-                  }
-                } catch(e) {}
-              }
-
-              if (!targetEmail || !targetEmail.includes('@')) {
-                btnLoginSubmit.disabled = false;
-                btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-                lucide.createIcons();
-                setLoginAlert('No registered email found for this account. Please log in using your registered email address.', 'error');
-                return;
-              }
-
-              targetUser = {
-                role: 'designer',
-                name: designer.name || 'Verified Designer',
-                identifier: targetEmail,
-                phone: clean10,
-                email: targetEmail,
-                displayLabel: maskEmailAddress(targetEmail),
-                designerData: designer
-              };
-            } else if (lowerId.includes('@')) {
-              // Email entered
-              if (db && typeof db.getDesigners === 'function') {
-                try {
-                  const list = await db.getDesigners();
-                  designer = (list || []).find(d => 
-                    (d.email && d.email.toLowerCase() === lowerId) || 
-                    (d.identifier && d.identifier.toLowerCase() === lowerId)
-                  );
-                } catch(e) {}
-              }
-
-              if (!designer) {
-                let registeredDesigners = [];
-                try { registeredDesigners = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]'); } catch(e) {}
-                designer = registeredDesigners.find(d => 
-                  (d.email && d.email.toLowerCase() === lowerId) || 
-                  (d.identifier && d.identifier.toLowerCase() === lowerId)
-                );
-              }
-
-              if (!designer) {
-                btnLoginSubmit.disabled = false;
-                btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-                lucide.createIcons();
-                setLoginAlert(`No account found registered with email address <strong>${maskEmailAddress(lowerId)}</strong>.<br/><span class="text-[11px] font-normal">Please verify your email or <button type="button" onclick="document.getElementById('tab-signup-btn').click()" class="text-blue-600 font-bold underline cursor-pointer">Join as Designer</button> to apply.</span>`, 'error');
-                return;
-              }
-
-              const expPass = (designer.password || '').toString().trim();
-              if (expPass && expPass !== enteredPass) {
-                btnLoginSubmit.disabled = false;
-                btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-                lucide.createIcons();
-                setLoginAlert('Incorrect password entered for this email account.', 'error');
-                return;
-              }
-
-              targetUser = {
-                role: 'designer',
-                name: designer.name || lowerId.split('@')[0],
-                identifier: designer.phone || designer.identifier || lowerId,
-                phone: designer.phone || designer.identifier || '',
-                email: lowerId,
-                displayLabel: maskEmailAddress(lowerId),
-                designerData: designer
-              };
-            } else {
-              btnLoginSubmit.disabled = false;
-              btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-              lucide.createIcons();
-              setLoginAlert('Please enter a valid Registered Email address, Admin ID, or 10-digit mobile number.', 'error');
-              return;
-            }
+          if (!targetUser) {
+            btnLoginSubmit.disabled = false;
+            btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
+            lucide.createIcons();
+            setLoginAlert('Unable to authenticate. Please verify and try again.', 'error');
+            return;
           }
 
           // Credentials passed! Transition immediately to Step 2 OTP verification screen
@@ -1541,7 +1395,7 @@
               name: 'Bilal (Platform Admin)',
               role: 'admin',
               identifier: 'admin@designquixobilal',
-              phone: pendingLoginUser.phone || '7869396378',
+              phone: pendingLoginUser.phone || '8602420897',
               email: pendingLoginUser.email,
               status: 'Approved'
             };
