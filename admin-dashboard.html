@@ -2115,6 +2115,7 @@
                   ${avatarHtml}
                   <div>
                     <div class="font-bold text-slate-900 text-sm">${d.name || 'Designer'}</div>
+                    ${designerEmail ? `<a href="mailto:${designerEmail}" class="text-[11px] text-blue-600 hover:underline font-mono font-medium block truncate max-w-[170px]" title="${designerEmail}">${designerEmail}</a>` : '<span class="text-[10px] text-slate-400 italic">No email</span>'}
                     <div class="text-[10px] text-slate-400 font-mono">Date: ${d.date || d.createdat || 'Active'}</div>
                   </div>
                 </div>
@@ -2461,15 +2462,17 @@
         localStorage.setItem('dq_registered_designers', JSON.stringify(registered));
         localStorage.setItem('dq_approved_designers', JSON.stringify(approved));
 
-        // Save directly to Supabase via REST API baseline (matches Supabase schema: id, name, phone, identifier, password, portfolio, skills, status, date, createdat)
+        // Save directly to Supabase via REST API baseline
         const manualPayload = {
           id: phone || email,
           name,
           phone,
+          email: email || '',
           identifier: email || phone,
           password: 'Designer@123',
           portfolio,
           skills,
+          experience: skills || 'Graphic Design',
           status,
           date: new Date().toLocaleDateString('en-IN'),
           createdat: new Date().toISOString()
