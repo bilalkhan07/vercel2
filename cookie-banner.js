@@ -50,34 +50,23 @@
 
     banner = document.createElement('div');
     banner.id = 'dq-cookie-consent-banner';
-    banner.className = 'fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-[99999] transition-all duration-300 transform translate-y-0';
+    banner.className = 'fixed bottom-3 left-3 right-3 sm:bottom-4 sm:left-auto sm:right-6 sm:max-w-md z-[99999] transition-all duration-300 transform translate-y-0';
     banner.innerHTML = `
-      <div class="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-2xl text-slate-800 font-['Plus_Jakarta_Sans',sans-serif] text-xs space-y-3">
-        <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200/60 shadow-xs text-base">
-            🍪
-          </div>
-          <div class="space-y-1">
-            <h4 class="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-2">
-              Cookie & Privacy Preferences
-              <span class="px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-bold border border-emerald-200">DPDPA 2023</span>
-            </h4>
-            <p class="text-slate-500 leading-relaxed text-[11px] sm:text-xs">
-              We use strictly necessary cookies & secure browser tokens for live designer job routing, WhatsApp delivery, and order intake. Zero ads, zero selling of personal data.
+      <div class="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-xl text-slate-800 font-['Plus_Jakarta_Sans',sans-serif]">
+        <div class="flex items-center gap-2.5">
+          <span class="text-base sm:text-lg shrink-0">🍪</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-[11px] sm:text-xs text-slate-600 leading-snug font-medium line-clamp-2 sm:line-clamp-none">
+              We use necessary cookies for live designer routing & WhatsApp delivery. No ads, never sold.
             </p>
           </div>
-        </div>
-
-        <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 flex-wrap">
-          <a href="privacy.html#cookies" class="text-slate-500 hover:text-blue-600 underline font-medium text-[11px] py-1">
-            Read Cookie Policy
-          </a>
-          <div class="flex items-center gap-2">
-            <button type="button" id="dq-cookie-essential-btn" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-[11px] transition-colors cursor-pointer">
-              Essential Only
+          <div class="flex items-center gap-1.5 shrink-0">
+            <a href="privacy.html#cookies" class="hidden sm:inline-block text-[11px] text-slate-400 hover:text-slate-600 underline mr-1">Policy</a>
+            <button type="button" id="dq-cookie-essential-btn" class="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold text-[10px] sm:text-[11px] cursor-pointer">
+              Essential
             </button>
-            <button type="button" id="dq-cookie-accept-btn" class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] shadow-xs transition-colors cursor-pointer">
-              Accept All
+            <button type="button" id="dq-cookie-accept-btn" class="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] sm:text-[11px] shadow-xs cursor-pointer">
+              Accept
             </button>
           </div>
         </div>
