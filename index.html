@@ -252,58 +252,67 @@
           <div class="absolute top-8 left-0 right-0 border-b border-dashed border-slate-200/60"></div>
         </div>
 
+        <!-- Optional Skip Intro Pill (Auto disappears when animation completes) -->
+        <button id="hero-skip-intro-btn" onclick="skipHeroAdSequence()" class="absolute top-3 right-4 sm:top-5 sm:right-8 z-30 px-3 py-1.5 rounded-full bg-white/90 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200 shadow-sm text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 opacity-0 pointer-events-none">
+          <span>Skip Ad Preview</span>
+          <i data-lucide="fast-forward" class="w-3.5 h-3.5"></i>
+        </button>
+
         <!-- Floating Creative Graphic Design Element 1: Figma/Illustrator Live Collab Cursor (Top Left) -->
-        <div class="hidden md:flex absolute top-10 left-6 lg:left-14 items-start gap-1 animate-float-slow pointer-events-none z-10 select-none">
+        <div id="hero-elem-designer" class="hidden md:flex absolute top-10 left-6 lg:left-14 items-start gap-1.5 animate-float-slow pointer-events-none z-10 select-none">
           <svg class="w-5 h-5 text-blue-600 drop-shadow-sm shrink-0" viewBox="0 0 24 24" fill="currentColor">
             <path d="M4 2L20 9L12 12L9 20L4 2Z"/>
           </svg>
-          <div class="px-2.5 py-1 rounded-full bg-blue-600 text-white font-bold text-[10px] shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Rahul • Sr. Vector Artist</span>
+          <div class="px-3 py-1.5 rounded-full bg-blue-600 text-white font-bold text-[11px] shadow-md flex items-center gap-2 whitespace-nowrap">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="hero-designer-badge-text">Designer Matched • Live Human</span>
           </div>
         </div>
 
         <!-- Floating Creative Graphic Design Element 2: Designer Toolbar Dock (Top Right) -->
-        <div class="hidden md:flex absolute top-10 right-6 lg:right-14 items-center gap-1 px-2.5 py-1.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md animate-float-sway pointer-events-none z-10 select-none">
-          <div class="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-            <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i>
+        <div id="hero-elem-toolbar" class="hidden md:flex absolute top-10 right-6 lg:right-14 items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md animate-float-sway pointer-events-none z-10 select-none">
+          <div id="tool-item-pen" class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs transition-all duration-300">
+            <i data-lucide="pen-tool" class="w-4 h-4"></i>
           </div>
-          <div class="w-7 h-7 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-            <i data-lucide="type" class="w-3.5 h-3.5"></i>
+          <div id="tool-item-type" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-300">
+            <i data-lucide="type" class="w-4 h-4"></i>
           </div>
-          <div class="w-7 h-7 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-            <i data-lucide="pipette" class="w-3.5 h-3.5"></i>
+          <div id="tool-item-pipette" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-300">
+            <i data-lucide="pipette" class="w-4 h-4"></i>
           </div>
-          <div class="w-7 h-7 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-            <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+          <div id="tool-item-layers" class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-300">
+            <i data-lucide="layers" class="w-4 h-4"></i>
           </div>
           <div class="h-4 w-px bg-slate-200 mx-1"></div>
-          <span class="text-[10px] font-extrabold text-blue-600 px-1">Vector Mode</span>
+          <span class="text-[11px] font-extrabold text-blue-600 px-1 whitespace-nowrap">Vector Mode</span>
         </div>
 
         <!-- Floating Creative Graphic Design Element 3: 30-Min Fast Turnaround Badge (Bottom Left) -->
-        <div class="hidden md:flex absolute bottom-14 left-4 lg:left-12 items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-emerald-200 shadow-md animate-float-reverse pointer-events-none z-10 select-none">
+        <div id="hero-elem-turnaround" class="hidden md:flex absolute bottom-14 left-4 lg:left-12 items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-emerald-200 shadow-md animate-float-reverse pointer-events-none z-10 select-none">
           <div class="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
             <i data-lucide="zap" class="w-4 h-4 fill-emerald-500 text-emerald-600"></i>
           </div>
-          <div class="text-left">
-            <span class="text-[11px] font-extrabold text-slate-900 block leading-tight">30-Min WhatsApp Sprints</span>
-            <span class="text-[9px] font-semibold text-emerald-700">Live Human Creators</span>
+          <div class="text-left leading-tight">
+            <span id="hero-turnaround-title" class="text-[11px] font-extrabold text-slate-900 block whitespace-nowrap">30-Min WhatsApp Sprints</span>
+            <span id="hero-turnaround-sub" class="text-[9px] font-semibold text-emerald-700 block whitespace-nowrap">Live Human Creators</span>
           </div>
         </div>
 
         <!-- Floating Creative Graphic Design Element 4: Canvas Artboard Specs Inspector (Bottom Right) -->
-        <div class="hidden md:flex absolute bottom-14 right-4 lg:right-12 items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md animate-float-slow pointer-events-none z-10 select-none">
+        <div id="hero-elem-specs" class="hidden md:flex absolute bottom-14 right-4 lg:right-12 items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md animate-float-slow pointer-events-none z-10 select-none">
           <div class="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shrink-0">
             <i data-lucide="file-code-2" class="w-4 h-4 text-indigo-600"></i>
           </div>
-          <div class="text-left">
-            <span class="text-[11px] font-extrabold text-slate-900 block leading-tight">AI, PSD, EPS & SVG</span>
-            <span class="text-[9px] font-semibold text-slate-500">CMYK 300 DPI • Print Ready</span>
+          <div class="text-left leading-tight">
+            <span id="hero-specs-title" class="text-[11px] font-extrabold text-slate-900 block whitespace-nowrap">AI, PSD, EPS & SVG</span>
+            <span id="hero-specs-sub" class="text-[9px] font-semibold text-slate-500 block whitespace-nowrap">CMYK 300 DPI • Print Ready</span>
           </div>
         </div>
 
-        <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+
+
+        <div id="hero-main-content" class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-700 ease-out">
+
           
           <!-- Trust Badge (500+ Designers Active 24/7) -->
           <div class="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-blue-50/90 hover:bg-blue-100/80 border border-blue-200 text-blue-800 text-xs sm:text-sm font-bold mb-6 sm:mb-8 shadow-xs transition-all cursor-default">
@@ -386,7 +395,7 @@
             </div>
             <div class="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
               <div class="text-2xl sm:text-4xl font-extrabold text-slate-900 font-['Space_Grotesk']">
-                <span class="counter-num" data-target="420">0</span>+
+                <span class="counter-num" data-target="800">0</span>+
               </div>
               <p class="text-xs sm:text-sm text-slate-600 mt-1 font-semibold">Verified Indian Designers</p>
             </div>
@@ -989,6 +998,371 @@
       }
 
       renderHomeContent();
+
+      // ==========================================
+      // GOOGLE-AD STYLE HERO INTRO ANIMATION ORCHESTRATOR
+      // ==========================================
+      let heroAdSequenceActive = false;
+      let heroAdTimers = [];
+
+      // Typewriter text animation utility
+      function typeWriterText(elementId, fullText, speedMs, onDone) {
+        const el = document.getElementById(elementId);
+        if (!el) {
+          if (onDone) onDone();
+          return;
+        }
+        el.textContent = '';
+        let idx = 0;
+        const interval = setInterval(() => {
+          idx++;
+          el.textContent = fullText.slice(0, idx);
+          if (idx >= fullText.length) {
+            clearInterval(interval);
+            if (onDone) onDone();
+          }
+        }, speedMs);
+        heroAdTimers.push(interval);
+      }
+
+      function runHeroAdSequence() {
+        const isMobile = window.innerWidth < 768;
+
+        // Mobile responsiveness: No animation on mobile, keep clean default layout as before
+        if (isMobile) {
+          return;
+        }
+
+        const heroContent = document.getElementById('hero-main-content');
+        const elemToolbar = document.getElementById('hero-elem-toolbar');
+        const elemDesigner = document.getElementById('hero-elem-designer');
+        const elemTurnaround = document.getElementById('hero-elem-turnaround');
+        const elemSpecs = document.getElementById('hero-elem-specs');
+        const skipBtn = document.getElementById('hero-skip-intro-btn');
+
+        if (!heroContent || !elemToolbar || !elemDesigner || !elemTurnaround || !elemSpecs) return;
+
+        heroAdSequenceActive = true;
+
+        // Clear any prior timers/intervals
+        heroAdTimers.forEach(t => {
+          clearTimeout(t);
+          clearInterval(t);
+        });
+        heroAdTimers = [];
+
+        const schedule = (fn, delay) => {
+          const t = setTimeout(fn, delay);
+          heroAdTimers.push(t);
+        };
+
+        // Clean setup: Read natural destination bounding boxes so movement is pixel-perfect
+        const stageRect = document.getElementById('hero-section').getBoundingClientRect();
+        
+        // Target natural anchor positions relative to hero-section
+        // Top-Left (Designer): left: 24px (sm: 36px), top: 40px
+        // Top-Right (Toolbar): right: 24px (sm: 36px), top: 40px
+        // Bottom-Left (Turnaround): left: 24px (sm: 36px), bottom: 56px
+        // Bottom-Right (Specs): right: 24px (sm: 36px), bottom: 56px
+
+        // Let's ensure each element stays in its natural absolute corner CSS positioning!
+        // We calculate delta from Center to Corner, and use pure TRANSFORM: translate(dx, dy) scale(...)
+        // That means:
+        // Center position: transform: translate(centerX - cornerX, centerY - cornerY) scale(...)
+        // Docked corner position: transform: translate(0, 0) scale(1)
+        // THIS COMPLETELY ELIMINATES ANY JUMP OR COORD DESYNC!
+        
+        const isLg = window.innerWidth >= 1024;
+        const padX = isLg ? 56 : 24;
+        const topY = 40;
+        const botY = 56;
+
+        // Elements natural positions in DOM:
+        // elemDesigner: top: 40px, left: padX
+        // elemToolbar: top: 40px, right: padX
+        // elemTurnaround: bottom: 56px, left: padX
+        // elemSpecs: bottom: 56px, right: padX
+
+        const elements = [elemToolbar, elemDesigner, elemTurnaround, elemSpecs];
+
+        // Reset classes
+        elements.forEach(el => {
+          el.classList.remove('hidden');
+          el.classList.remove('animate-float-slow', 'animate-float-sway', 'animate-float-reverse');
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+          el.style.zIndex = '20';
+        });
+
+        const heroWidth = stageRect.width;
+        const heroHeight = stageRect.height;
+        const centerX = heroWidth / 2;
+        const centerY = heroHeight / 2;
+
+        // Calculate center delta for each element:
+        // elemToolbar: natural is top: 40px, right: padX (left = heroWidth - padX - elWidth)
+        // To center it:
+        // deltaX = centerX - (heroWidth - padX - (elemToolbar.offsetWidth || 280) / 2)
+        // deltaY = centerY - (topY + (elemToolbar.offsetHeight || 48) / 2)
+        const tbW = elemToolbar.offsetWidth || 290;
+        const tbH = elemToolbar.offsetHeight || 48;
+        const tbCenterDeltaX = centerX - (heroWidth - padX - tbW / 2);
+        const tbCenterDeltaY = centerY - (topY + tbH / 2);
+
+        // elemDesigner: natural is top: 40px, left: padX
+        const desW = elemDesigner.offsetWidth || 230;
+        const desH = elemDesigner.offsetHeight || 48;
+        const desCenterDeltaX = centerX - (padX + desW / 2);
+        const desCenterDeltaY = centerY - (topY + desH / 2);
+
+        // elemTurnaround: natural is bottom: botY (top = heroHeight - botY - elH), left: padX
+        const trnW = elemTurnaround.offsetWidth || 210;
+        const trnH = elemTurnaround.offsetHeight || 52;
+        const trnCenterDeltaX = centerX - (padX + trnW / 2);
+        const trnCenterDeltaY = centerY - (heroHeight - botY - trnH / 2);
+
+        // elemSpecs: natural is bottom: botY, right: padX (left = heroWidth - padX - elW)
+        const spcW = elemSpecs.offsetWidth || 210;
+        const spcH = elemSpecs.offsetHeight || 52;
+        const spcCenterDeltaX = centerX - (heroWidth - padX - spcW / 2);
+        const spcCenterDeltaY = centerY - (heroHeight - botY - spcH / 2);
+
+        // Define smooth glide cubic bezier
+        const glideTransition = 'transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease, box-shadow 0.6s ease';
+
+        // Initialize elements at Center using Delta transforms
+        elemToolbar.style.transform = `translate3d(${tbCenterDeltaX}px, ${tbCenterDeltaY}px, 0) scale(1.22)`;
+        elemDesigner.style.transform = `translate3d(${desCenterDeltaX}px, ${desCenterDeltaY}px, 0) scale(1.22)`;
+        elemTurnaround.style.transform = `translate3d(${trnCenterDeltaX}px, ${trnCenterDeltaY}px, 0) scale(1.22)`;
+        elemSpecs.style.transform = `translate3d(${spcCenterDeltaX}px, ${spcCenterDeltaY}px, 0) scale(1.22)`;
+
+        elements.forEach(el => {
+          el.style.transition = glideTransition;
+        });
+
+        // Hide hero text initially
+        heroContent.style.opacity = '0';
+        heroContent.style.transform = 'translateY(18px) scale(0.98)';
+        heroContent.style.filter = 'blur(4px)';
+
+        // Show skip button
+        if (skipBtn) {
+          skipBtn.style.opacity = '1';
+          skipBtn.style.pointerEvents = 'auto';
+        }
+
+        // Reset tool icons
+        const pen = document.getElementById('tool-item-pen');
+        const type = document.getElementById('tool-item-type');
+        const layers = document.getElementById('tool-item-layers');
+
+        // Pre-clear typewriter texts so they reveal freshly
+        const designerTextEl = document.getElementById('hero-designer-badge-text');
+        const turnaroundTitleEl = document.getElementById('hero-turnaround-title');
+        const turnaroundSubEl = document.getElementById('hero-turnaround-sub');
+        const specsTitleEl = document.getElementById('hero-specs-title');
+        const specsSubEl = document.getElementById('hero-specs-sub');
+
+        if (designerTextEl) designerTextEl.textContent = '';
+        if (turnaroundTitleEl) turnaroundTitleEl.textContent = '';
+        if (turnaroundSubEl) turnaroundSubEl.textContent = '';
+        if (specsTitleEl) specsTitleEl.textContent = '';
+        if (specsSubEl) specsSubEl.textContent = '';
+
+        // =========================================================================
+        // STAGE 1: VECTOR TOOLBAR POPS IN CENTER STAGE (200ms -> 1600ms)
+        // =========================================================================
+        schedule(() => {
+          elemToolbar.style.opacity = '1';
+          elemToolbar.style.zIndex = '35';
+          elemToolbar.style.boxShadow = '0 25px 50px -12px rgba(37, 99, 235, 0.28)';
+
+          // Smooth interactive tool switching: Layers -> Type -> Pen Tool
+          schedule(() => {
+            if (pen) pen.className = 'w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-200';
+            if (layers) layers.className = 'w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md scale-110 transition-all duration-200';
+          }, 320);
+
+          schedule(() => {
+            if (layers) layers.className = 'w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-200';
+            if (type) type.className = 'w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md scale-110 transition-all duration-200';
+          }, 640);
+
+          schedule(() => {
+            if (type) type.className = 'w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center transition-all duration-200';
+            if (pen) pen.className = 'w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg scale-120 ring-4 ring-blue-200 transition-all duration-200';
+          }, 980);
+        }, 200);
+
+        // =========================================================================
+        // STAGE 2: TOOLBAR SMOOTHLY GLIDES TO TOP-RIGHT + DESIGNER TYPEWRITER
+        // (1600ms -> 3200ms)
+        // =========================================================================
+        schedule(() => {
+          // Send Toolbar to natural Top-Right corner smoothly
+          elemToolbar.style.transform = 'translate3d(0, 0, 0) scale(1)';
+          elemToolbar.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+          elemToolbar.style.zIndex = '15';
+          if (pen) pen.className = 'w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs transition-all duration-300';
+
+          // Center Stage: DESIGNER BADGE REVEALS with TYPEWRITER
+          schedule(() => {
+            elemDesigner.style.opacity = '1';
+            elemDesigner.style.zIndex = '35';
+            elemDesigner.style.boxShadow = '0 25px 50px -12px rgba(37, 99, 235, 0.28)';
+
+            typeWriterText('hero-designer-badge-text', 'Designer Matched • Live Human', 22);
+          }, 180);
+        }, 1600);
+
+        // =========================================================================
+        // STAGE 3: DESIGNER GLIDES TO TOP-LEFT + 30-MIN SPRINTS TYPEWRITER
+        // (3200ms -> 4800ms)
+        // =========================================================================
+        schedule(() => {
+          // Send Designer badge to natural Top-Left corner smoothly
+          elemDesigner.style.transform = 'translate3d(0, 0, 0) scale(1)';
+          elemDesigner.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+          elemDesigner.style.zIndex = '15';
+
+          // Center Stage: 30-MIN SPRINTS REVEALS with TYPEWRITER
+          schedule(() => {
+            elemTurnaround.style.opacity = '1';
+            elemTurnaround.style.zIndex = '35';
+            elemTurnaround.style.boxShadow = '0 25px 50px -12px rgba(16, 185, 129, 0.28)';
+
+            typeWriterText('hero-turnaround-title', '30-Min WhatsApp Sprints', 20, () => {
+              typeWriterText('hero-turnaround-sub', 'Live Human Creators', 18);
+            });
+          }, 180);
+        }, 3200);
+
+        // =========================================================================
+        // STAGE 4: 30-MIN GLIDES TO BOTTOM-LEFT + ASSET SPECS TYPEWRITER
+        // (4800ms -> 6400ms)
+        // =========================================================================
+        schedule(() => {
+          // Send 30-Min badge to natural Bottom-Left corner smoothly
+          elemTurnaround.style.transform = 'translate3d(0, 0, 0) scale(1)';
+          elemTurnaround.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+          elemTurnaround.style.zIndex = '15';
+
+          // Center Stage: ASSET SPECS REVEALS with TYPEWRITER
+          schedule(() => {
+            elemSpecs.style.opacity = '1';
+            elemSpecs.style.zIndex = '35';
+            elemSpecs.style.boxShadow = '0 25px 50px -12px rgba(99, 102, 241, 0.28)';
+
+            typeWriterText('hero-specs-title', 'AI, PSD, EPS & SVG', 22, () => {
+              typeWriterText('hero-specs-sub', 'CMYK 300 DPI • Print Ready', 18);
+            });
+          }, 180);
+        }, 4800);
+
+        // =========================================================================
+        // STAGE 5: ASSET SPECS GLIDES TO BOTTOM-RIGHT + HERO HEADLINE REVEAL
+        // (6400ms -> 7500ms)
+        // =========================================================================
+        schedule(() => {
+          // Send Asset Specs badge to natural Bottom-Right corner smoothly
+          elemSpecs.style.transform = 'translate3d(0, 0, 0) scale(1)';
+          elemSpecs.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05)';
+          elemSpecs.style.zIndex = '15';
+
+          // Reveal Main Hero Text & Buttons
+          schedule(() => {
+            heroContent.classList.add('hero-reveal-up');
+            heroContent.style.opacity = '1';
+            heroContent.style.transform = 'translateY(0) scale(1)';
+            heroContent.style.filter = 'none';
+
+            // Ensure texts fully populated
+            const dBadge = document.getElementById('hero-designer-badge-text');
+            if (dBadge) dBadge.textContent = 'Designer Matched • Live Human';
+            const tTitle = document.getElementById('hero-turnaround-title');
+            if (tTitle) tTitle.textContent = '30-Min WhatsApp Sprints';
+            const tSub = document.getElementById('hero-turnaround-sub');
+            if (tSub) tSub.textContent = 'Live Human Creators';
+            const sTitle = document.getElementById('hero-specs-title');
+            if (sTitle) sTitle.textContent = 'AI, PSD, EPS & SVG';
+            const sSub = document.getElementById('hero-specs-sub');
+            if (sSub) sSub.textContent = 'CMYK 300 DPI • Print Ready';
+
+            // Keep elements permanently and stably locked in place at their corner docks
+            schedule(() => {
+              if (skipBtn) {
+                skipBtn.style.opacity = '0';
+                skipBtn.style.pointerEvents = 'none';
+              }
+              heroAdSequenceActive = false;
+            }, 900);
+          }, 250);
+        }, 6400);
+      }
+
+      window.skipHeroAdSequence = function() {
+        heroAdTimers.forEach(t => {
+          clearTimeout(t);
+          clearInterval(t);
+        });
+        heroAdTimers = [];
+
+        const heroContent = document.getElementById('hero-main-content');
+        const elemToolbar = document.getElementById('hero-elem-toolbar');
+        const elemDesigner = document.getElementById('hero-elem-designer');
+        const elemTurnaround = document.getElementById('hero-elem-turnaround');
+        const elemSpecs = document.getElementById('hero-elem-specs');
+        const skipBtn = document.getElementById('hero-skip-intro-btn');
+        const pen = document.getElementById('tool-item-pen');
+
+        if (heroContent) {
+          heroContent.style.opacity = '1';
+          heroContent.style.transform = 'none';
+          heroContent.style.filter = 'none';
+          heroContent.classList.remove('hero-reveal-up');
+        }
+
+        if (elemToolbar) {
+          elemToolbar.className = 'hidden md:flex absolute top-10 right-6 lg:right-14 items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md animate-float-sway pointer-events-none z-10 select-none';
+          elemToolbar.style = '';
+        }
+        if (elemDesigner) {
+          elemDesigner.className = 'hidden md:flex absolute top-10 left-6 lg:left-14 items-start gap-1.5 animate-float-slow pointer-events-none z-10 select-none';
+          elemDesigner.style = '';
+        }
+        if (elemTurnaround) {
+          elemTurnaround.className = 'hidden md:flex absolute bottom-14 left-4 lg:left-12 items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-emerald-200 shadow-md animate-float-reverse pointer-events-none z-10 select-none';
+          elemTurnaround.style = '';
+        }
+        if (elemSpecs) {
+          elemSpecs.className = 'hidden md:flex absolute bottom-14 right-4 lg:right-12 items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-md animate-float-slow pointer-events-none z-10 select-none';
+          elemSpecs.style = '';
+        }
+        if (pen) {
+          pen.className = 'w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs transition-all duration-300';
+        }
+
+        const dBadge = document.getElementById('hero-designer-badge-text');
+        if (dBadge) dBadge.textContent = 'Designer Matched • Live Human';
+        const tTitle = document.getElementById('hero-turnaround-title');
+        if (tTitle) tTitle.textContent = '30-Min WhatsApp Sprints';
+        const tSub = document.getElementById('hero-turnaround-sub');
+        if (tSub) tSub.textContent = 'Live Human Creators';
+        const sTitle = document.getElementById('hero-specs-title');
+        if (sTitle) sTitle.textContent = 'AI, PSD, EPS & SVG';
+        const sSub = document.getElementById('hero-specs-sub');
+        if (sSub) sSub.textContent = 'CMYK 300 DPI • Print Ready';
+
+        if (skipBtn) {
+          skipBtn.style.opacity = '0';
+          skipBtn.style.pointerEvents = 'none';
+        }
+        heroAdSequenceActive = false;
+      };
+
+      // Launch Hero Motion Ad
+      runHeroAdSequence();
+
 
       window.addEventListener('storage', (e) => {
         if (e.key === 'dq_services' || e.key === 'dq_portfolio_items') {
