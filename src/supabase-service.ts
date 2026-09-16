@@ -1678,6 +1678,9 @@ export const DQSupabase = {
     };
   },
 
+  // ==========================================
+  // 4. PORTFOLIO SHOWCASE SYNC
+  // ==========================================
   async savePortfolioItem(item: any): Promise<void> {
     if (!item || !item.id) return;
     try {
@@ -1688,13 +1691,25 @@ export const DQSupabase = {
       localStorage.setItem('dq_portfolio_items', JSON.stringify(local));
       window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: local }));
 
+      const delivery = item.delivery || item.deliveryTime || '⚡ 30-45m Delivery';
+      const client = item.client || 'Verified Client';
+      const desc = item.description || item.desc || '';
+
+      const meta = JSON.stringify({
+        delivery,
+        deliveryTime: delivery,
+        client,
+        description: desc,
+        desc
+      });
+
       await supabase.from('portfolio').upsert({
         id: item.id,
         title: item.title || '',
         category: item.category || '',
-        designer: item.designer || '',
+        designer: item.designer || client,
         image: item.image || '',
-        tags: Array.isArray(item.tags) ? item.tags : [item.deliveryTime || '35m']
+        tags: [delivery, meta]
       });
     } catch (e) {
       console.warn('Supabase savePortfolio error:', e);
@@ -1720,15 +1735,35 @@ export const DQSupabase = {
     try {
       const { data: dbRows, error } = await supabase.from('portfolio').select('*');
       if (!error && Array.isArray(dbRows) && dbRows.length > 0) {
-        const parsed = dbRows.map(row => ({
-          id: row.id,
-          title: row.title || '',
-          category: row.category || '',
-          designer: row.designer || '',
-          image: row.image || '',
-          deliveryTime: Array.isArray(row.tags) && row.tags[0] ? row.tags[0] : '35m',
-          description: row.description || 'Verified Design Deliverable'
-        }));
+        const parsed = dbRows.map(row => {
+          let meta: any = {};
+          if (Array.isArray(row.tags)) {
+            for (const t of row.tags) {
+              if (typeof t === 'string' && t.startsWith('{')) {
+                try { meta = JSON.parse(t); } catch (e) {}
+              }
+            }
+          }
+
+          const deliveryTime = (Array.isArray(row.tags) && row.tags[0] && !row.tags[0].startsWith('{'))
+            ? row.tags[0]
+            : (meta.deliveryTime || meta.delivery || '⚡ 30-45m Delivery');
+
+          const description = row.description || meta.description || meta.desc || '';
+          const client = meta.client || row.designer || 'Verified Client';
+
+          return {
+            id: row.id,
+            title: row.title || '',
+            category: row.category || '',
+            client,
+            image: row.image || '',
+            delivery: deliveryTime,
+            deliveryTime,
+            description
+          };
+        });
+
         localStorage.setItem('dq_portfolio_items', JSON.stringify(parsed));
         window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: parsed }));
         return parsed;
