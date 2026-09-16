@@ -2529,19 +2529,25 @@
           console.error('Agreement PDF generation error:', pdfErr);
         }
 
-        // Save designer record with phone, email identifier, portfolio, and skills
-        // (Only valid columns for Supabase designers table: id, name, phone, identifier, password, portfolio, skills, status, date, createdat)
+        // Save designer record with phone, email, identifier, portfolio, and skills
+        // Supabase designers table columns: id, name, phone, email, identifier, password, portfolio, skills, status, date, createdat
         const directPayload = {
           id: clean10 || email,
           name: name || 'Designer',
           phone: clean10 || '',
+          email: email || '',
           identifier: email || clean10,
           password: password.toString(),
           portfolio: portfolio || '',
           skills: skills || 'Graphic Design',
+          experience: skills || 'Graphic Design',
           status: 'Pending',
-          date: new Date().toLocaleDateString('en-IN'),
-          createdat: new Date().toISOString()
+          date: dateSignedStr || new Date().toLocaleDateString('en-IN'),
+          createdat: new Date().toISOString(),
+          signature: sigDataUrl || '',
+          signatureDataUrl: sigDataUrl || '',
+          agreementSigned: true,
+          agreementSignedDate: dateSignedStr || new Date().toLocaleDateString('en-IN')
         };
 
         // Server registration mirror (bypasses any client-side RLS restrictions)
