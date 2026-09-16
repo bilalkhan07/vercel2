@@ -127,6 +127,8 @@ const DEFAULT_SERVICES = [
   }
 ];
 
+
+
 const DEFAULT_PORTFOLIO = [
   {
     id: 'port-1',
@@ -135,8 +137,7 @@ const DEFAULT_PORTFOLIO = [
     deliveryTime: '⚡ 32m Delivery',
     image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
     description: 'Delivered layered PSD with custom cutout shadows and typography hook.',
-    client: 'TechVibe Hindi',
-    city: 'Indore, MP'
+    client: 'TechVibe Hindi'
   },
   {
     id: 'port-2',
@@ -145,8 +146,7 @@ const DEFAULT_PORTFOLIO = [
     deliveryTime: '⚡ 28m Delivery',
     image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
     description: 'Minimalist aesthetic color grading with custom vector icons.',
-    client: 'Brew Artisan Cafe',
-    city: 'Bengaluru'
+    client: 'Brew Artisan Cafe'
   },
   {
     id: 'port-3',
@@ -155,8 +155,7 @@ const DEFAULT_PORTFOLIO = [
     deliveryTime: '⚡ 1h 15m Delivery',
     image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
     description: 'Vector AI, EPS, SVG source files with dark & light theme variants.',
-    client: 'NexusPay',
-    city: 'Mumbai'
+    client: 'NexusPay'
   },
   {
     id: 'port-4',
@@ -165,8 +164,7 @@ const DEFAULT_PORTFOLIO = [
     deliveryTime: '⚡ 1h 45m Delivery',
     image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
     description: 'CMYK 300 DPI print-ready dielines with foil stamping guidelines.',
-    client: 'Veda Naturals',
-    city: 'Jaipur'
+    client: 'Veda Naturals'
   },
   {
     id: 'port-5',
@@ -175,8 +173,7 @@ const DEFAULT_PORTFOLIO = [
     deliveryTime: '⚡ 48m Delivery',
     image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=700&auto=format&fit=crop&q=80',
     description: 'Vibrant typography with festival lineup layout and ticket QR.',
-    client: 'Sunfest Live',
-    city: 'Delhi NCR'
+    client: 'Sunfest Live'
   },
   {
     id: 'port-6',
@@ -185,8 +182,7 @@ const DEFAULT_PORTFOLIO = [
     deliveryTime: '⚡ 35m Delivery',
     image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=700&auto=format&fit=crop&q=80',
     description: 'Neon atmospheric glow and bold Hindi + English typography.',
-    client: 'Clan Alpha Gaming',
-    city: 'Pune'
+    client: 'Clan Alpha Gaming'
   }
 ];
 
@@ -623,17 +619,19 @@ window.DQStore = {
       id: 'port-' + Date.now(),
       title: item.title || 'Creative Project',
       category: item.category || 'social',
-      deliveryTime: item.deliveryTime || '⚡ 30-45m Delivery',
+      delivery: item.delivery || item.deliveryTime || '⚡ 30-45m Delivery',
+      deliveryTime: item.delivery || item.deliveryTime || '⚡ 30-45m Delivery',
       image: item.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
-      description: item.description || 'Handcrafted vector design delivered with layered source files.',
-      client: item.client || 'Verified Brand',
-      city: item.city || 'India'
+      description: item.description !== undefined ? item.description : (item.desc || ''),
+      client: item.client || 'Verified Client'
     };
     list.unshift(newItem);
     this.savePortfolio(list);
     syncPortfolioCloud(newItem);
     return newItem;
   },
+
+
 
   deletePortfolioItem(portId) {
     const list = this.getPortfolio();
