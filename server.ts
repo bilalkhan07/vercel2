@@ -789,7 +789,7 @@ async function startServer() {
                 }
               });
 
-              // 1b. Fetch all registered designers from Supabase (using select('*') to safely fetch all available columns)
+              // 1b. Fetch all registered/approved designers from Supabase
               try {
                 const { data: dbDesigners, error } = await serverSupabase
                   .from('designers')
@@ -801,6 +801,23 @@ async function startServer() {
                     if (em && em.includes('@') && em.includes('.')) {
                       if (!recipientMap.has(em)) {
                         recipientMap.set(em, d.name || 'Designer');
+                      }
+                    }
+                  });
+                }
+
+                // Also check login_history for any signed designers who had emails recorded
+                const { data: logDesigners } = await serverSupabase
+                  .from('login_history')
+                  .select('phone, name, status')
+                  .or('role.eq.designer,role.eq.signed_agreement');
+
+                if (logDesigners && Array.isArray(logDesigners)) {
+                  logDesigners.forEach((l: any) => {
+                    const candidate = (l.phone || '').toString().trim().toLowerCase();
+                    if (candidate.includes('@') && candidate.includes('.')) {
+                      if (!recipientMap.has(candidate)) {
+                        recipientMap.set(candidate, l.name || 'Designer');
                       }
                     }
                   });
@@ -1166,18 +1183,26 @@ async function startServer() {
                 return res.end(JSON.stringify({ success: false, message: 'Valid 10-digit mobile number or email address required.' }));
               }
 
-              // Supabase valid columns: id, name, phone, email, experience, software, portfolio, photo, role, status, earnings, createdat
-              const designerRow = {
+              // Supabase valid columns: id, name, phone, email, experience, software, portfolio, photo, role, status, earnings, createdat, signature, signaturedataurl, agreementsigned, agreementsigneddate
+              const sigDataUrl = (payload.signature || payload.signatureDataUrl || '').toString();
+              const designerRow: any = {
                 id: primaryId,
                 name: name,
                 phone: clean10 || '',
                 email: cleanEmail || '',
+                identifier: cleanEmail || clean10,
                 portfolio: portfolio || '',
+                skills: skills || 'Graphic Design',
                 experience: skills || 'Graphic Design',
                 software: skills ? skills.split(',').map((s: string) => s.trim()).filter(Boolean) : ['Photoshop', 'Illustrator'],
                 role: 'designer',
                 status: status || 'Pending',
-                createdat: nowIso
+                date: dateStr,
+                createdat: nowIso,
+                signature: sigDataUrl,
+                signaturedataurl: sigDataUrl,
+                agreementsigned: true,
+                agreementsigneddate: dateStr
               };
 
               const { data: upsertData, error: upsertErr } = await serverSupabase
@@ -1188,16 +1213,28 @@ async function startServer() {
                 console.warn('[SERVER /api/register-designer] Supabase upsert notice:', upsertErr.message);
               }
 
-              // Save registration record in login_history
+              // Save registration audit log & signature record in login_history
               try {
                 await serverSupabase.from('login_history').insert({
                   id: `reg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
                   phone: clean10 || cleanEmail,
                   name: name,
                   role: 'designer',
-                  status: `Designer Registered (${status}) - Email: ${cleanEmail || 'None'} - Portfolio: ${portfolio ? 'Yes' : 'None'} - Skills: ${skills}`,
+                  status: `Designer Registered (${status}) - Email: ${cleanEmail || 'None'} - Phone: +91 ${clean10} - Portfolio: ${portfolio || 'None'} - Skills: ${skills}`,
                   timestamp: nowIso
                 });
+
+                if (sigDataUrl) {
+                  const sigLogId = clean10 ? `sig-${clean10}` : `sig-${cleanEmail}`;
+                  await serverSupabase.from('login_history').insert({
+                    id: sigLogId,
+                    phone: clean10 || cleanEmail,
+                    name: name,
+                    role: 'signed_agreement',
+                    status: sigDataUrl,
+                    timestamp: nowIso
+                  });
+                }
               } catch (logErr) {
                 console.warn('[SERVER /api/register-designer] login_history notice:', logErr);
               }
