@@ -176,8 +176,8 @@ export const EmailService = {
   // 3. Send Official Approval & Feature Welcome Email when Designer is Approved
   async sendApprovalWelcomeEmailToDesigner(designer: { name: string; email: string; phone: string }): Promise<boolean> {
     const cleanEmail = (designer.email || '').toString().trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.endsWith('@designquixo.com') || cleanEmail.endsWith('@example.com') || cleanEmail.includes('undefined')) {
-      console.warn('Skipping approval email dispatch: invalid/dummy email', designer.email);
+    if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.endsWith('@example.com') || cleanEmail.includes('undefined') || cleanEmail === 'test@test.com') {
+      console.warn('Skipping approval email dispatch: invalid email', designer.email);
       return false;
     }
 

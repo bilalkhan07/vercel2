@@ -1387,12 +1387,20 @@ export const DQSupabase = {
                 avatar = dpMap[phone] || dpMap[cleanEmail] || dpMap['+91' + phone] || '';
               } catch (e) {}
             }
+            const skillsVal = (d.skills || d.experience || (Array.isArray(d.software) && d.software.length ? d.software.join(', ') : '') || 'Graphic Design').toString().trim();
+            const portfolioVal = (d.portfolio || d.portfolioUrl || d.portfoliolink || '').toString().trim();
+
             return {
               ...d,
               name: d.name || 'Designer',
               phone: phone,
               email: cleanEmail,
               identifier: cleanEmail || phone,
+              skills: skillsVal,
+              experience: d.experience || skillsVal,
+              software: Array.isArray(d.software) ? d.software : (skillsVal ? skillsVal.split(',').map((s: string) => s.trim()).filter(Boolean) : ['Photoshop', 'Illustrator']),
+              portfolio: portfolioVal,
+              portfolioUrl: portfolioVal,
               avatar: avatar,
               avatarUrl: avatar,
               status: d.status || 'Pending',
@@ -1611,7 +1619,7 @@ export const DQSupabase = {
     try {
       const { data: dbRows, error } = await supabase.from('services').select('*');
       if (!error && Array.isArray(dbRows) && dbRows.length > 0) {
-        const parsed = dbRows.map(row => {
+        const parsed = dbRows.filter((row: any) => row && row.id && !row.id.startsWith('sys_')).map(row => {
           let meta: any = {};
           try {
             if (row.tag && typeof row.tag === 'string' && row.tag.startsWith('{')) {
@@ -1755,7 +1763,7 @@ export const DQSupabase = {
   },
 
   // ==========================================
-  // 4B. GOOGLE REVIEWS SYNC (Supabase settings & reviews)
+  // 4B. GOOGLE REVIEWS SYNC (Supabase cloud services table + Server API)
   // ==========================================
   async saveReviewItem(item: any): Promise<void> {
     if (!item || !item.id) return;
@@ -1763,16 +1771,29 @@ export const DQSupabase = {
 
     try {
       let local: any[] = JSON.parse(localStorage.getItem('dq_google_reviews') || '[]');
-      const idx = local.findIndex(r => r.id === cleanId);
+      const idx = local.findIndex(r => r.id === cleanId || String(r.id) === String(cleanId));
       if (idx !== -1) local[idx] = { ...local[idx], ...item };
       else local.unshift(item);
       localStorage.setItem('dq_google_reviews', JSON.stringify(local));
       window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: local }));
 
-      await supabase.from('settings').upsert({
-        key: 'google_reviews',
-        value: JSON.stringify(local)
+      // 1. Persist directly to Supabase services table under sys_google_reviews
+      await supabase.from('services').upsert({
+        id: 'sys_google_reviews',
+        name: 'System Reviews Data Store',
+        price: 0,
+        tag: JSON.stringify(local),
+        description: 'Cloud storage for all verified client reviews'
       });
+
+      // 2. Call server API to persist to reviews.json as well
+      try {
+        fetch('/api/save-review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item: item, items: local })
+        }).catch(() => {});
+      } catch (fe) {}
     } catch (e) {
       console.warn('Supabase save review error:', e);
     }
@@ -1784,14 +1805,27 @@ export const DQSupabase = {
 
     try {
       let local: any[] = JSON.parse(localStorage.getItem('dq_google_reviews') || '[]');
-      local = local.filter(r => r.id !== cleanId);
+      local = local.filter(r => r.id !== cleanId && String(r.id) !== cleanId);
       localStorage.setItem('dq_google_reviews', JSON.stringify(local));
       window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: local }));
 
-      await supabase.from('settings').upsert({
-        key: 'google_reviews',
-        value: JSON.stringify(local)
+      // 1. Update Supabase
+      await supabase.from('services').upsert({
+        id: 'sys_google_reviews',
+        name: 'System Reviews Data Store',
+        price: 0,
+        tag: JSON.stringify(local),
+        description: 'Cloud storage for all verified client reviews'
       });
+
+      // 2. Update server API
+      try {
+        fetch('/api/delete-review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: cleanId })
+        }).catch(() => {});
+      } catch (fe) {}
     } catch (e) {
       console.warn('Supabase delete review error:', e);
     }
@@ -1804,17 +1838,34 @@ export const DQSupabase = {
     } catch (e) {}
 
     try {
-      const { data: setRow } = await supabase.from('settings').select('value').eq('key', 'google_reviews').maybeSingle();
-      if (setRow && setRow.value) {
-        const parsed = typeof setRow.value === 'string' ? JSON.parse(setRow.value) : setRow.value;
+      // 1. Try Supabase cloud table first
+      const { data: setRow } = await supabase
+        .from('services')
+        .select('tag')
+        .eq('id', 'sys_google_reviews')
+        .maybeSingle();
+
+      if (setRow && setRow.tag) {
+        const parsed = typeof setRow.tag === 'string' ? JSON.parse(setRow.tag) : setRow.tag;
         if (Array.isArray(parsed) && parsed.length > 0) {
           localStorage.setItem('dq_google_reviews', JSON.stringify(parsed));
           window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: parsed }));
           return parsed;
         }
       }
+
+      // 2. Fallback to server API /api/get-reviews
+      const srvRes = await fetch('/api/get-reviews');
+      if (srvRes.ok) {
+        const srvData = await srvRes.json();
+        if (srvData && Array.isArray(srvData.reviews) && srvData.reviews.length > 0) {
+          localStorage.setItem('dq_google_reviews', JSON.stringify(srvData.reviews));
+          window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: srvData.reviews }));
+          return srvData.reviews;
+        }
+      }
     } catch (e) {
-      console.warn('Failed to fetch reviews from Supabase:', e);
+      console.warn('Failed to fetch reviews from cloud:', e);
     }
 
     return local;
@@ -1827,9 +1878,14 @@ export const DQSupabase = {
   subscribeReviews(callback: (reviews: any[]) => void): () => void {
     const fetchLatest = async () => {
       try {
-        const { data: setRow } = await supabase.from('settings').select('value').eq('key', 'google_reviews').maybeSingle();
-        if (setRow && setRow.value) {
-          const parsed = typeof setRow.value === 'string' ? JSON.parse(setRow.value) : setRow.value;
+        const { data: setRow } = await supabase
+          .from('services')
+          .select('tag')
+          .eq('id', 'sys_google_reviews')
+          .maybeSingle();
+
+        if (setRow && setRow.tag) {
+          const parsed = typeof setRow.tag === 'string' ? JSON.parse(setRow.tag) : setRow.tag;
           if (Array.isArray(parsed) && parsed.length > 0) {
             localStorage.setItem('dq_google_reviews', JSON.stringify(parsed));
             window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: parsed }));
@@ -1854,7 +1910,7 @@ export const DQSupabase = {
     try {
       channel = supabase
         .channel(`rt_reviews_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'settings', filter: 'key=eq.google_reviews' }, () => {
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'services', filter: 'id=eq.sys_google_reviews' }, () => {
           fetchLatest();
         })
         .subscribe();
@@ -2356,16 +2412,20 @@ export const DQSupabase = {
         } catch (e) {}
       }
 
-      // Save directly to Supabase designers table (Strict schema match: id, name, phone, identifier, password, portfolio, skills, status, date, createdat)
+      // Save directly to Supabase designers table (Strict schema match: id, name, phone, email, experience, software, portfolio, status, role, createdat)
       const designerRow = {
         id: phone10 || cleanEmail,
         name: applicant.name || 'Designer',
         phone: phone10 || '',
+        email: cleanEmail || '',
         identifier: cleanEmail || phone10 || '',
         password: cleanPass,
         status: 'Pending',
-        portfolio: applicant.portfolio || '',
-        skills: applicant.skills || 'Graphic Design',
+        portfolio: (applicant.portfolio || '').toString().trim(),
+        skills: (applicant.skills || 'Graphic Design').toString().trim(),
+        experience: (applicant.skills || 'Graphic Design').toString().trim(),
+        software: applicant.skills ? applicant.skills.split(',').map((s: string) => s.trim()).filter(Boolean) : ['Photoshop', 'Illustrator'],
+        role: 'designer',
         date: new Date().toLocaleDateString('en-IN'),
         createdat: new Date().toISOString()
       };
