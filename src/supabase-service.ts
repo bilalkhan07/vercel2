@@ -173,8 +173,8 @@ export function extractImageUrl(field: any): string {
 
 
 export async function pruneMissingColumnsAndUpsert(table: string, payload: any): Promise<{ success: boolean; error?: string }> {
-  // Supabase designers table schema: [id, name, phone, identifier, password, portfolio, skills, status, date, createdat]
-  const DESIGNERS_VALID_COLS = new Set(['id', 'name', 'phone', 'identifier', 'password', 'portfolio', 'skills', 'status', 'date', 'createdat']);
+  // Supabase designers table schema: [id, name, phone, email, identifier, password, portfolio, skills, experience, software, role, status, date, createdat, earnings, isapproved, approvedat, signature, signaturedataurl, agreementsigned, agreementsigneddate]
+  const DESIGNERS_VALID_COLS = new Set(['id', 'name', 'phone', 'email', 'identifier', 'password', 'portfolio', 'skills', 'experience', 'software', 'role', 'status', 'date', 'createdat', 'earnings', 'isapproved', 'approvedat', 'signature', 'signaturedataurl', 'agreementsigned', 'agreementsigneddate']);
 
   let currentPayload = { ...payload };
   if (table === 'designers') {
@@ -326,10 +326,12 @@ export async function safeUpsertDesigner(designer: any): Promise<{ success: bool
     id: phone10 || cleanEmail,
     name: designer.name || 'Designer',
     phone: phone10,
+    email: cleanEmail || '',
     identifier: cleanEmail || phone10,
     password: (designer.password !== undefined && designer.password !== null) ? designer.password.toString() : 'Designer@123',
     portfolio: designer.portfolio || '',
     skills: designer.skills || 'Graphic Design',
+    experience: designer.skills || designer.experience || 'Graphic Design',
     status: designer.status || 'Pending',
     date: designer.date || new Date().toLocaleDateString('en-IN'),
     createdat: designer.createdAt || designer.registeredAt || new Date().toISOString()
