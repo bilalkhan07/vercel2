@@ -1118,16 +1118,8 @@
 
             const adminWA = getAdminWhatsAppNumber();
             const waMessage = encodeURIComponent(
-              `*DESIGN QUIXO - NEW DESIGN BRIEF*\n\n` +
-              `*Job ID:* #${jobId}\n` +
-              `*Service:* ${serviceName}\n` +
-              `*Project:* ${projectName}\n` +
-              `*Aspect Ratio:* ${ratio}\n` +
-              `*Delivery SLA:* ${sla}\n` +
-              `*Client WhatsApp:* +91 ${whatsapp}\n\n` +
-              `*Brief & Details:*\n` +
-              `${brief.length > 200 ? brief.substring(0, 200) + '...' : brief}\n\n` +
-              `Hello Design Quixo Operations Desk, I submitted Job #${jobId} on the platform. Please connect me with the assigned designer!`
+              `Hi Designer, I have submitted a design project on Design Quixo. Thanks for accepting!\n\n` +
+              `Job ID: #${jobId}`
             );
             const waUrl = `https://wa.me/${adminWA}?text=${waMessage}`;
             document.getElementById('whatsapp-deep-link').href = waUrl;
