@@ -1154,7 +1154,7 @@ async function startServer() {
               const name = (payload.name || 'Designer').toString().trim();
               const pass = (payload.password || 'Designer@123').toString().trim();
               const portfolio = (payload.portfolio || '').toString().trim();
-              const skills = (payload.skills || 'Graphic Design').toString().trim();
+              const skills = (payload.skills || payload.experience || 'Graphic Design').toString().trim();
               const status = payload.status || 'Pending';
               const dateStr = payload.date || new Date().toLocaleDateString('en-IN');
               const nowIso = new Date().toISOString();
@@ -1166,17 +1166,17 @@ async function startServer() {
                 return res.end(JSON.stringify({ success: false, message: 'Valid 10-digit mobile number or email address required.' }));
               }
 
-              // Supabase exact valid columns: id, name, phone, identifier, password, portfolio, skills, status, date, createdat
+              // Supabase valid columns: id, name, phone, email, experience, software, portfolio, photo, role, status, earnings, createdat
               const designerRow = {
                 id: primaryId,
                 name: name,
                 phone: clean10 || '',
-                identifier: cleanEmail || clean10,
-                password: pass,
-                portfolio: portfolio,
-                skills: skills,
-                status: status,
-                date: dateStr,
+                email: cleanEmail || '',
+                portfolio: portfolio || '',
+                experience: skills || 'Graphic Design',
+                software: skills ? skills.split(',').map((s: string) => s.trim()).filter(Boolean) : ['Photoshop', 'Illustrator'],
+                role: 'designer',
+                status: status || 'Pending',
                 createdat: nowIso
               };
 
@@ -1195,7 +1195,7 @@ async function startServer() {
                   phone: clean10 || cleanEmail,
                   name: name,
                   role: 'designer',
-                  status: `Designer Registered (${status}) - Portfolio: ${portfolio ? 'Yes' : 'None'}`,
+                  status: `Designer Registered (${status}) - Email: ${cleanEmail || 'None'} - Portfolio: ${portfolio ? 'Yes' : 'None'} - Skills: ${skills}`,
                   timestamp: nowIso
                 });
               } catch (logErr) {
@@ -1224,9 +1224,9 @@ async function startServer() {
           req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
           req.on('end', async () => {
             try {
-              const { key, status } = JSON.parse(body || '{}');
-              const cleanKey = (key || '').toString().trim().toLowerCase();
-              const newStatus = (status === 'Approved' || status === 'Revoked') ? status : 'Pending';
+              const payload = JSON.parse(body || '{}');
+              const cleanKey = (payload.key || '').toString().trim().toLowerCase();
+              const newStatus = (payload.status === 'Approved' || payload.status === 'Revoked') ? payload.status : 'Pending';
 
               if (!cleanKey) {
                 res.statusCode = 400;
@@ -1236,15 +1236,24 @@ async function startServer() {
 
               const clean10 = cleanKey.replace(/\D/g, '').slice(-10);
 
-              // Update Supabase by id, phone, or identifier
+              // Update Supabase by id, phone, or email
+              const updatePayload: any = { 
+                status: newStatus,
+                isapproved: newStatus === 'Approved'
+              };
+              if (newStatus === 'Approved') {
+                updatePayload.approvedat = new Date().toISOString();
+              }
+
               const updateTasks = [
-                Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('id', cleanKey)),
-                Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('identifier', cleanKey))
+                Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('id', cleanKey))
               ];
               if (clean10 && clean10.length === 10) {
-                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('id', clean10)));
-                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('phone', clean10)));
-                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update({ status: newStatus }).eq('identifier', clean10)));
+                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('id', clean10)));
+                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('phone', clean10)));
+              }
+              if (cleanKey.includes('@')) {
+                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('email', cleanKey)));
               }
 
               await Promise.allSettled(updateTasks);
@@ -1260,6 +1269,72 @@ async function startServer() {
                   timestamp: new Date().toISOString()
                 });
               } catch (logErr) {}
+
+              // If status is Approved, automatically trigger Approval Email!
+              if (newStatus === 'Approved') {
+                try {
+                  let targetEmail = (payload.email || '').trim().toLowerCase();
+                  let designerName = (payload.name || '').trim();
+
+                  // If email was not passed in request body, look it up in Supabase
+                  if (!targetEmail || !targetEmail.includes('@')) {
+                    const { data: dRows } = await serverSupabase
+                      .from('designers')
+                      .select('*')
+                      .or(`id.eq.${cleanKey},phone.eq.${clean10 || cleanKey}`);
+                    if (dRows && dRows.length > 0) {
+                      const dRow = dRows[0];
+                      if (dRow.email && dRow.email.includes('@')) {
+                        targetEmail = dRow.email.trim().toLowerCase();
+                      }
+                      if (dRow.name && !designerName) {
+                        designerName = dRow.name;
+                      }
+                    }
+                  }
+
+                  if (targetEmail && targetEmail.includes('@') && !targetEmail.includes('dummy') && !targetEmail.includes('example.com')) {
+                    const approveHtml = `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:'Plus Jakarta Sans',sans-serif;color:#0f172a;">
+  <div style="max-width:580px;margin:0 auto;background:#ffffff;border-radius:20px;border:1px solid #e2e8f0;padding:32px;box-shadow:0 10px 25px rgba(0,0,0,0.04);">
+    <div style="text-align:center;padding-bottom:24px;border-bottom:1px solid #f1f5f9;">
+      <h1 style="color:#2563eb;font-size:24px;margin:0;font-weight:800;">Design Quixo</h1>
+      <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Designer Network Verification</p>
+    </div>
+    <div style="padding:28px 0;text-align:center;">
+      <div style="width:60px;height:60px;line-height:60px;border-radius:50%;background:#ecfdf5;color:#059669;font-size:28px;margin:0 auto 16px;border:2px solid #a7f3d0;">✓</div>
+      <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin:0 0 10px;">Congratulations ${designerName || 'Designer'}!</h2>
+      <p style="font-size:15px;color:#334155;line-height:1.6;margin:0 0 20px;">Your designer partner account has been <strong style="color:#059669;">Approved & Cleared</strong> by Design Quixo Platform Administration.</p>
+      <div style="background:#f1f5f9;border-radius:12px;padding:16px;text-align:left;font-size:13px;color:#475569;margin-bottom:24px;">
+        <p style="margin:0 0 6px;"><strong>Registered ID / Mobile:</strong> ${clean10 || cleanKey}</p>
+        <p style="margin:0 0 6px;"><strong>Registered Email:</strong> ${targetEmail}</p>
+        <p style="margin:0 0 6px;"><strong>Clearance Status:</strong> <span style="color:#059669;font-weight:bold;">Active & Approved</span></p>
+        <p style="margin:0;"><strong>Next Step:</strong> You can now log into your Designer Workspace to accept high-speed client design jobs.</p>
+      </div>
+      <a href="https://designquixo.com/login.html" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:12px;font-weight:700;font-size:14px;">Log In to Designer Portal</a>
+    </div>
+    <div style="border-top:1px solid #f1f5f9;padding-top:20px;text-align:center;font-size:12px;color:#94a3b8;">
+      © Design Quixo · MP Nagar Zone II, Bhopal, MP · High-Speed Design Operations
+    </div>
+  </div>
+</body>
+</html>`;
+
+                    await sendMailWithFallback({
+                      to: targetEmail,
+                      subject: `🎉 Account Approved: Welcome to Design Quixo Partner Network`,
+                      html: approveHtml,
+                      text: `Congratulations ${designerName || 'Designer'}! Your Design Quixo account (${clean10 || cleanKey}) has been approved. You can now log into your designer workspace: https://designquixo.com/login.html`
+                    });
+                    console.log(`[SERVER] Approval email successfully dispatched to ${targetEmail}`);
+                  } else {
+                    console.log(`[SERVER] Skipping approval email: No valid email address for designer ${cleanKey}`);
+                  }
+                } catch (emailErr) {
+                  console.warn('[SERVER] Approval email dispatch warning:', emailErr);
+                }
+              }
 
               res.setHeader('Content-Type', 'application/json');
               return res.end(JSON.stringify({ 
@@ -1600,13 +1675,173 @@ async function startServer() {
         }
 
         
+        // --- REVIEWS API ROUTES (SUPABASE + DISK PERSISTENCE) ---
+        if (req.url === '/api/get-reviews' && req.method === 'GET') {
+          try {
+            const { data, error } = await serverSupabase
+              .from('services')
+              .select('*')
+              .eq('id', 'sys_google_reviews')
+              .maybeSingle();
+
+            let reviewsList: any[] = [];
+            if (data && data.tag) {
+              try {
+                reviewsList = JSON.parse(data.tag);
+              } catch (pe) {}
+            }
+
+            // Fallback to local reviews.json if empty or Supabase unavailable
+            if (!reviewsList || reviewsList.length === 0) {
+              const localRevPath = path.join(process.cwd(), 'reviews.json');
+              if (fs.existsSync(localRevPath)) {
+                try {
+                  reviewsList = JSON.parse(fs.readFileSync(localRevPath, 'utf-8'));
+                } catch (fe) {}
+              }
+            }
+
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({
+              success: true,
+              reviews: reviewsList || []
+            }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            setNoCacheHeaders(res);
+            return res.end(JSON.stringify({ success: false, reviews: [], message: err.message }));
+          }
+        }
+
+        if (req.url === '/api/save-review' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const payload = JSON.parse(body || '{}');
+              let listToSave: any[] = [];
+
+              if (Array.isArray(payload.items) && payload.items.length > 0) {
+                listToSave = payload.items;
+              } else if (payload.item && payload.item.id) {
+                // Fetch current list first
+                const { data } = await serverSupabase
+                  .from('services')
+                  .select('tag')
+                  .eq('id', 'sys_google_reviews')
+                  .maybeSingle();
+                
+                let current: any[] = [];
+                if (data && data.tag) {
+                  try { current = JSON.parse(data.tag); } catch(e) {}
+                }
+                if (!Array.isArray(current) || current.length === 0) {
+                  const localRevPath = path.join(process.cwd(), 'reviews.json');
+                  if (fs.existsSync(localRevPath)) {
+                    try { current = JSON.parse(fs.readFileSync(localRevPath, 'utf-8')); } catch(e) {}
+                  }
+                }
+                if (!Array.isArray(current)) current = [];
+
+                const idx = current.findIndex(r => r.id === payload.item.id || String(r.id) === String(payload.item.id));
+                if (idx !== -1) {
+                  current[idx] = { ...current[idx], ...payload.item };
+                } else {
+                  current.unshift(payload.item);
+                }
+                listToSave = current;
+              } else {
+                res.statusCode = 400;
+                setNoCacheHeaders(res);
+                return res.end(JSON.stringify({ success: false, message: 'Invalid review payload' }));
+              }
+
+              // Persist to Supabase services table under 'sys_google_reviews'
+              await serverSupabase.from('services').upsert({
+                id: 'sys_google_reviews',
+                name: 'System Reviews Data Store',
+                price: 0,
+                tag: JSON.stringify(listToSave),
+                description: 'Cloud storage for all verified client reviews'
+              });
+
+              // Also persist to reviews.json on disk
+              try {
+                fs.writeFileSync(path.join(process.cwd(), 'reviews.json'), JSON.stringify(listToSave, null, 2));
+              } catch (fe) {}
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({
+                success: true,
+                reviews: listToSave,
+                message: 'Review persisted to Supabase cloud and server storage.'
+              }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message }));
+            }
+          });
+          return;
+        }
+
+        if (req.url === '/api/delete-review' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const { id } = JSON.parse(body || '{}');
+              if (!id) {
+                res.statusCode = 400;
+                setNoCacheHeaders(res);
+                return res.end(JSON.stringify({ success: false, message: 'Missing review id' }));
+              }
+
+              const { data } = await serverSupabase
+                .from('services')
+                .select('tag')
+                .eq('id', 'sys_google_reviews')
+                .maybeSingle();
+              
+              let current: any[] = [];
+              if (data && data.tag) {
+                try { current = JSON.parse(data.tag); } catch(e) {}
+              }
+              if (Array.isArray(current)) {
+                current = current.filter(r => r.id !== id && String(r.id) !== String(id));
+                await serverSupabase.from('services').upsert({
+                  id: 'sys_google_reviews',
+                  name: 'System Reviews Data Store',
+                  price: 0,
+                  tag: JSON.stringify(current),
+                  description: 'Cloud storage for all verified client reviews'
+                });
+                try {
+                  fs.writeFileSync(path.join(process.cwd(), 'reviews.json'), JSON.stringify(current, null, 2));
+                } catch(e) {}
+              }
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: true, reviews: current, message: 'Review deleted from cloud.' }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message }));
+            }
+          });
+          return;
+        }
+
     next();
   });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        hmr: false
+      },
       appType: 'mpa',
     });
 

@@ -334,11 +334,66 @@ function initCloudServicesSync() {
     }
   }, 400);
 }
+// Background auto-listener for cloud reviews sync
+function initCloudReviewsSync() {
+  if (typeof window === 'undefined') return;
+  let attempts = 0;
+  let syncInitialized = false;
+
+  const setupReviewSync = () => {
+    if (syncInitialized) return;
+    const db = getCloudDb();
+    if (db && typeof db.fetchReviews === 'function') {
+      syncInitialized = true;
+      try {
+        if (typeof db.subscribeReviews === 'function') {
+          db.subscribeReviews((liveReviews) => {
+            if (Array.isArray(liveReviews) && liveReviews.length > 0) {
+              localStorage.setItem('dq_google_reviews', JSON.stringify(liveReviews));
+              window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: liveReviews }));
+            }
+          });
+        }
+        db.fetchReviews().then((liveReviews) => {
+          if (Array.isArray(liveReviews) && liveReviews.length > 0) {
+            localStorage.setItem('dq_google_reviews', JSON.stringify(liveReviews));
+            window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: liveReviews }));
+          }
+        }).catch(() => {});
+      } catch(e) {}
+    } else {
+      // Fallback to direct /api/get-reviews
+      fetch('/api/get-reviews')
+        .then(res => res.json())
+        .then(data => {
+          if (data && Array.isArray(data.reviews) && data.reviews.length > 0) {
+            localStorage.setItem('dq_google_reviews', JSON.stringify(data.reviews));
+            window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: data.reviews }));
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  setupReviewSync();
+  const interval = setInterval(() => {
+    attempts++;
+    setupReviewSync();
+    if (syncInitialized || attempts > 20) {
+      clearInterval(interval);
+    }
+  }, 400);
+}
+
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCloudServicesSync);
+    document.addEventListener('DOMContentLoaded', () => {
+      initCloudServicesSync();
+      initCloudReviewsSync();
+    });
   } else {
     initCloudServicesSync();
+    initCloudReviewsSync();
   }
 }
 
@@ -372,6 +427,15 @@ function deletePortfolioCloud(itemId) {
 
 function syncReviewCloud(item) {
   if (typeof window === 'undefined' || !item || !item.id) return;
+  // Direct Server API call
+  try {
+    fetch('/api/save-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item })
+    }).catch(() => {});
+  } catch(e) {}
+
   const db = getCloudDb();
   if (db && typeof db.saveReviewItem === 'function') {
     db.saveReviewItem(item).catch(e => console.warn('Review cloud sync error:', e));
@@ -392,6 +456,14 @@ function syncReviewCloud(item) {
 
 function deleteReviewCloud(itemId) {
   if (typeof window === 'undefined' || !itemId) return;
+  try {
+    fetch('/api/delete-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: itemId })
+    }).catch(() => {});
+  } catch(e) {}
+
   const db = getCloudDb();
   if (db && typeof db.deleteReviewItem === 'function') {
     db.deleteReviewItem(itemId).catch(e => console.warn('Review cloud delete error:', e));

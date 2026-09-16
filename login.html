@@ -118,7 +118,12 @@
                 <label class="block font-bold text-slate-700 uppercase tracking-wider">Access PIN / Password *</label>
                 <button type="button" id="btn-forgot-password-link" class="text-blue-600 hover:underline text-[11px] font-bold cursor-pointer">Forgot Password?</button>
               </div>
-              <input type="password" id="login-password" required placeholder="Enter password or 4-digit PIN" class="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 focus:bg-white rounded-xl p-3 sm:p-3.5 text-sm text-slate-900 outline-none transition-colors" />
+              <div class="relative flex items-center">
+                <input type="password" id="login-password" required placeholder="Enter password or 4-digit PIN" class="w-full bg-slate-50 border border-slate-300 focus:border-blue-500 focus:bg-white rounded-xl p-3 sm:p-3.5 pr-11 text-sm text-slate-900 outline-none transition-colors" />
+                <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute right-2.5 p-1.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer rounded-lg hover:bg-slate-200/50" title="Show / Hide Password">
+                  <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
+              </div>
             </div>
 
             <div class="p-3 rounded-xl bg-blue-50/60 border border-blue-100 text-[11px] text-blue-900 flex items-start gap-2">
@@ -367,7 +372,12 @@
 
             <div>
               <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1">Choose a Password or PIN *</label>
-              <input type="password" id="signup-password" required placeholder="Minimum 4 characters" class="w-full bg-slate-50 border border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl p-3 text-sm text-slate-900 outline-none transition-colors" />
+              <div class="relative flex items-center">
+                <input type="password" id="signup-password" required placeholder="Minimum 4 characters" class="w-full bg-slate-50 border border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl p-3 pr-11 text-sm text-slate-900 outline-none transition-colors" />
+                <button type="button" onclick="togglePasswordVisibility('signup-password', this)" class="absolute right-2.5 p-1.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer rounded-lg hover:bg-slate-200/50" title="Show / Hide Password">
+                  <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
+              </div>
             </div>
 
             <!-- CREATOR AGREEMENT BLOCK (CLEAN, MINIMAL & ZERO OVERLAY) -->
@@ -2738,6 +2748,17 @@
         alert(`✓ Registration & E-Signature Complete!\n\nWelcome ${name}! Your Creator Agreement has been digitally signed, stamped, and downloaded.\n\nYour account is now pending review (2-4 hours). Admin will reach out on WhatsApp (+91 ${clean10})!`);
         window.location.href = 'designer-dashboard.html';
       });
+
+      window.togglePasswordVisibility = function(inputId, btnEl) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        if (btnEl) {
+          btnEl.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" class="w-4 h-4"></i>`;
+          if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+        }
+      };
     </script>
   </body>
 </html>

@@ -2133,13 +2133,23 @@
                   <span>+91 ${cleanPhone || 'N/A'}</span>
                 </a>
               </td>
-              <td class="p-4 max-w-[150px] truncate">
-                <a href="${d.portfolio && d.portfolio.startsWith('http') ? d.portfolio : 'https://' + (d.portfolio || 'behance.net')}" target="_blank" class="text-blue-600 hover:text-blue-700 font-semibold hover:underline inline-flex items-center gap-1">
-                  <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                  <span>View Portfolio</span>
-                </a>
+              <td class="p-4 max-w-[180px]">
+                ${(() => {
+                  const port = (d.portfolio || d.portfolioUrl || d.portfoliolink || '').toString().trim();
+                  if (!port) return '<span class="text-xs text-slate-400 italic">No link</span>';
+                  const fullUrl = port.startsWith('http://') || port.startsWith('https://') ? port : 'https://' + port;
+                  const displayTxt = port.replace(/^https?:\/\//, '').replace(/\/$/, '');
+                  return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 font-semibold hover:underline inline-flex items-center gap-1 text-xs truncate max-w-[170px]" title="${fullUrl}">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5 shrink-0"></i>
+                    <span class="truncate">${displayTxt}</span>
+                  </a>`;
+                })()}
               </td>
-              <td class="p-4 text-slate-600">${d.skills || 'Graphic Design'}</td>
+              <td class="p-4">
+                <span class="inline-block px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold max-w-[200px] truncate" title="${(d.skills || d.experience || (Array.isArray(d.software) && d.software.length ? d.software.join(', ') : '') || 'Graphic Design').toString().trim()}">
+                  ${(d.skills || d.experience || (Array.isArray(d.software) && d.software.length ? d.software.join(', ') : '') || 'Graphic Design').toString().trim()}
+                </span>
+              </td>
               <td class="p-4">
                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isAppr ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800 animate-pulse'}">
                   ${isAppr ? 'Verified Active' : 'Pending Audit'}
@@ -2927,12 +2937,19 @@
                 const email = d.email || (d.identifier && d.identifier.includes('@') ? d.identifier : d.id && d.id.includes('@') ? d.id : '');
                 const cleanEmail = (email || '').toString().trim().toLowerCase();
                 const phone = get10DigitPhone(d.phone || d.id || d.identifier);
+                const skillsVal = (d.skills || d.experience || (Array.isArray(d.software) && d.software.length ? d.software.join(', ') : '') || 'Graphic Design').toString().trim();
+                const portfolioVal = (d.portfolio || d.portfolioUrl || d.portfoliolink || '').toString().trim();
                 return {
                   ...d,
                   name: d.name || 'Designer',
                   phone: phone,
                   email: cleanEmail,
                   identifier: cleanEmail || phone,
+                  skills: skillsVal,
+                  experience: d.experience || skillsVal,
+                  software: Array.isArray(d.software) ? d.software : (skillsVal ? skillsVal.split(',').map(s => s.trim()).filter(Boolean) : []),
+                  portfolio: portfolioVal,
+                  portfolioUrl: portfolioVal,
                   status: d.status || 'Pending',
                   date: d.date || (d.createdat ? new Date(d.createdat).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'))
                 };

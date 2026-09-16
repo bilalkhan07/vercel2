@@ -6,6 +6,24 @@
 (function() {
   'use strict';
 
+  // Suppress benign preview-only Vite websocket disconnect warning
+  if (typeof window !== 'undefined' && window.console) {
+    const origError = console.error;
+    const origWarn = console.warn;
+    console.error = function(...args) {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('[vite] failed to connect to websocket')) {
+        return;
+      }
+      return origError.apply(console, args);
+    };
+    console.warn = function(...args) {
+      if (args[0] && typeof args[0] === 'string' && args[0].includes('[vite] failed to connect to websocket')) {
+        return;
+      }
+      return origWarn.apply(console, args);
+    };
+  }
+
   function createFloatingCookieButton() {
     if (document.getElementById('dq-cookie-settings-btn')) return;
     const btn = document.createElement('button');
