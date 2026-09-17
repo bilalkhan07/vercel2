@@ -134,7 +134,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'High CTR Thumbnail',
     category: 'thumbnail',
     deliveryTime: '⚡ 25m Delivery',
-    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
+    image: 'portfolio-high-ctr-thumbnail.webp',
     description: 'High-CTR YouTube thumbnail designed with bold visuals, strong hierarchy, and attention-grabbing composition to maximize viewer engagement.',
     client: 'CA Mohit Patidar'
   },
@@ -143,7 +143,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'Avir Vada Pav',
     category: 'branding',
     deliveryTime: '⚡ 1hr Delivery',
-    image: 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80',
+    image: 'portfolio-avir-vada-pav.webp',
     description: 'Custom logo designed for Avir Vada Pav, bringing the three family members together in a memorable and friendly brand identity.',
     client: 'Avir Jain'
   },
@@ -152,7 +152,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'Brest Pump Packaging',
     category: 'social',
     deliveryTime: '⚡ 1.5hr Delivery',
-    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80',
+    image: 'portfolio-brest-pump.webp',
     description: 'Professional breast pump packaging designed with a clean, modern, and trustworthy visual identity for a medical healthcare brand.',
     client: 'Aditya Ajmera'
   },
@@ -161,7 +161,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'Malhaari Insta Grid',
     category: 'social',
     deliveryTime: '⚡ 30m Delivery',
-    image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80',
+    image: 'portfolio-malhaari-insta-grid.webp',
     description: 'A visually engaging Instagram grid crafted to strengthen brand identity with clean, consistent, and modern creative direction.',
     client: 'Hiten Sharma'
   }
