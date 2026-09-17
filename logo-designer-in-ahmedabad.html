@@ -23,6 +23,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="store.js"></script>
+    <script type="module" src="/src/supabase-service.ts"></script>
     <script src="security.js"></script>
     <!-- Design Quixo Source & UI Security -->
     <script>
@@ -599,16 +602,35 @@
           </div>
 
           <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6" id="city-portfolio-grid">
-            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
               <div>
                 <div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80" alt="Tech Review High-CTR Thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';" />
-                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 32m Delivery</span>
+                  <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80" alt="High CTR Thumbnail in Ahmedabad" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />
+                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 25m Delivery</span>
                 </div>
                 <div class="p-3.5 sm:p-5 space-y-1">
                   <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">YouTube Thumbnail</span>
-                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">Tech Review High-CTR Thumbnail</h3>
-                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">Delivered layered PSD with custom cutout shadows and typography hook.</p>
+                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">High CTR Thumbnail</h3>
+                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">High-CTR YouTube thumbnail designed with bold visuals, strong hierarchy, and attention-grabbing composition to maximize viewer engagement.</p>
+                </div>
+              </div>
+              <div class="p-3.5 sm:p-5 pt-0">
+                <a href="request.html?city=Ahmedabad&service=youtube-thumbnail" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
+                  Order Similar in Ahmedabad &rarr;
+                </a>
+              </div>
+            </div>
+
+            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
+              <div>
+                <div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">
+                  <img src="https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80" alt="Avir Vada Pav in Ahmedabad" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />
+                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 1hr Delivery</span>
+                </div>
+                <div class="p-3.5 sm:p-5 space-y-1">
+                  <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">Brand Logo Design</span>
+                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">Avir Vada Pav</h3>
+                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">Custom logo designed for Avir Vada Pav, bringing the three family members together in a memorable and friendly brand identity.</p>
                 </div>
               </div>
               <div class="p-3.5 sm:p-5 pt-0">
@@ -618,58 +640,39 @@
               </div>
             </div>
 
-            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
               <div>
                 <div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80" alt="Artisan Coffee Launch Carousel" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';" />
-                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 28m Delivery</span>
+                  <img src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80" alt="Brest Pump Packaging in Ahmedabad" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />
+                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 1.5hr Delivery</span>
                 </div>
                 <div class="p-3.5 sm:p-5 space-y-1">
                   <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">Social Media Creative</span>
-                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">Artisan Coffee Launch Carousel</h3>
-                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">Minimalist aesthetic color grading with custom vector icons.</p>
+                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">Brest Pump Packaging</h3>
+                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">Professional breast pump packaging designed with a clean, modern, and trustworthy visual identity for a medical healthcare brand.</p>
                 </div>
               </div>
               <div class="p-3.5 sm:p-5 pt-0">
-                <a href="request.html?city=Ahmedabad&service=logo-design" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
+                <a href="request.html?city=Ahmedabad&service=social-media" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
                   Order Similar in Ahmedabad &rarr;
                 </a>
               </div>
             </div>
 
-            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
               <div>
                 <div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80" alt="Nexus Pay Fintech Logo Mark" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';" />
-                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 1h 15m Delivery</span>
+                  <img src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80" alt="Malhaari Insta Grid in Ahmedabad" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />
+                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 30m Delivery</span>
                 </div>
                 <div class="p-3.5 sm:p-5 space-y-1">
-                  <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">Logo Design</span>
-                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">Nexus Pay Fintech Logo Mark</h3>
-                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">Vector AI, EPS, SVG source files with dark & light theme variants.</p>
+                  <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">Social Media Creative</span>
+                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">Malhaari Insta Grid</h3>
+                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">A visually engaging Instagram grid crafted to strengthen brand identity with clean, consistent, and modern creative direction.</p>
                 </div>
               </div>
               <div class="p-3.5 sm:p-5 pt-0">
-                <a href="request.html?city=Ahmedabad&service=logo-design" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
-                  Order Similar in Ahmedabad &rarr;
-                </a>
-              </div>
-            </div>
-
-            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
-              <div>
-                <div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">
-                  <img src="https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80" alt="Ayurvedic Skincare Serum Box Dieline" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';" />
-                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">⚡ 1h 45m Delivery</span>
-                </div>
-                <div class="p-3.5 sm:p-5 space-y-1">
-                  <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">Packaging & Labels</span>
-                  <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">Ayurvedic Skincare Serum Box Dieline</h3>
-                  <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">CMYK 300 DPI print-ready dielines with foil stamping guidelines.</p>
-                </div>
-              </div>
-              <div class="p-3.5 sm:p-5 pt-0">
-                <a href="request.html?city=Ahmedabad&service=logo-design" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
+                <a href="request.html?city=Ahmedabad&service=social-media" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
                   Order Similar in Ahmedabad &rarr;
                 </a>
               </div>
@@ -998,6 +1001,77 @@
             }).join('');
           }
         } catch(e) { console.error('City services render error:', e); }
+
+        // 2. Render Portfolio dynamically synchronized with Home Page & Store
+        try {
+          let portfolio = [];
+          if (window.DQStore && typeof window.DQStore.getPortfolio === 'function') {
+            portfolio = window.DQStore.getPortfolio();
+          } else {
+            try { portfolio = JSON.parse(localStorage.getItem('dq_portfolio_items') || '[]'); } catch(e) {}
+          }
+          const portContainer = document.getElementById('city-portfolio-grid');
+          if (portContainer && Array.isArray(portfolio) && portfolio.length > 0) {
+            const catDisplayMap = {
+              'thumbnail': 'YouTube Thumbnail',
+              'social': 'Social Media Creative',
+              'branding': 'Brand Logo Design',
+              'print': 'Print & Packaging',
+              'vector': 'Vector Art & Tracing',
+              'packaging': 'Packaging & Labels',
+              'flyer': 'Flyers & Posters',
+              'youtube thumbnail': 'YouTube Thumbnail',
+              'social media creative': 'Social Media Creative',
+              'logo design': 'Brand Logo Design',
+              'packaging & labels': 'Packaging & Labels',
+              'flyers & posters': 'Flyers & Posters'
+            };
+            const catServiceMap = {
+              'thumbnail': 'youtube-thumbnail',
+              'social': 'social-media',
+              'branding': 'logo-design',
+              'print': 'visiting-card',
+              'vector': 'vector-art',
+              'packaging': 'packaging-design',
+              'flyer': 'flyer-design',
+              'youtube thumbnail': 'youtube-thumbnail',
+              'social media creative': 'social-media',
+              'logo design': 'logo-design',
+              'packaging & labels': 'packaging-design',
+              'flyers & posters': 'flyer-design'
+            };
+
+            portContainer.innerHTML = portfolio.map(p => {
+              const delivery = p.deliveryTime || p.delivery || '⚡ 30-45m Delivery';
+              const pImg = (p.image && p.image.trim() !== '') ? p.image : 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';
+              const rawCat = (p.category || 'design').toLowerCase();
+              const catDisplayName = catDisplayMap[rawCat] || p.category || 'Graphic Design';
+              const targetService = catServiceMap[rawCat] || 'graphic-design';
+              const pTitle = p.title || 'Creative Design';
+              const pDesc = p.description || p.desc || 'Delivered layered source files with full master copyright.';
+              const orderUrl = 'request.html?city=' + encodeURIComponent(currentCityName) + '&service=' + encodeURIComponent(targetService);
+
+              return '<div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">' +
+                '<div>' +
+                  '<div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">' +
+                    '<img src="' + pImg + '" alt="' + pTitle + ' in ' + currentCityName + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />' +
+                    '<span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">' + delivery + '</span>' +
+                  '</div>' +
+                  '<div class="p-3.5 sm:p-5 space-y-1">' +
+                    '<span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">' + catDisplayName + '</span>' +
+                    '<h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-[\'Space_Grotesk\'] leading-snug tracking-tight">' + pTitle + '</h3>' +
+                    '<p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">' + pDesc + '</p>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="p-3.5 sm:p-5 pt-0">' +
+                  '<a href="' + orderUrl + '" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">' +
+                    'Order Similar in ' + currentCityName + ' &rarr;' +
+                  '</a>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+          }
+        } catch(e) { console.error('City portfolio render error:', e); }
       }
 
       function populateCityOfficeInfo() {
@@ -1180,6 +1254,19 @@
               });
             } catch(e) {}
           }
+          if (typeof db.fetchPortfolio === 'function') {
+            try {
+              await db.fetchPortfolio();
+              renderCityDynamicContent();
+            } catch(e) {}
+          }
+          if (typeof db.subscribePortfolio === 'function') {
+            try {
+              db.subscribePortfolio(function() {
+                renderCityDynamicContent();
+              });
+            } catch(e) {}
+          }
           if (typeof db.fetchCityAddresses === 'function') {
             try {
               await db.fetchCityAddresses();
@@ -1192,9 +1279,41 @@
             } catch(e) {}
           }
         }
+        // Direct REST fetch to guarantee instant sync without waiting for modules
+        try {
+          fetch('https://lwcuxohrnrkjyfmszxab.supabase.co/rest/v1/portfolio?select=*', {
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo',
+              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo'
+            }
+          }).then(function(r) { return r.json(); }).then(function(rows) {
+            if (Array.isArray(rows) && rows.length > 0) {
+              var parsed = rows.map(function(d) {
+                var meta = {};
+                if (Array.isArray(d.tags)) {
+                  d.tags.forEach(function(t) {
+                    if (t && t.startsWith('{')) { try { meta = JSON.parse(t); } catch(e){} }
+                  });
+                }
+                return {
+                  id: d.id,
+                  title: d.title,
+                  category: d.category,
+                  deliveryTime: meta.deliveryTime || meta.delivery || (Array.isArray(d.tags) && d.tags[0]) || '⚡ 30m Delivery',
+                  image: d.image,
+                  description: meta.description || meta.desc || d.description || '',
+                  client: meta.client || 'Verified Client'
+                };
+              });
+              localStorage.setItem('dq_portfolio_items', JSON.stringify(parsed));
+              renderCityDynamicContent();
+            }
+          }).catch(function(){});
+        } catch(e) {}
       }
-      setTimeout(syncCityData, 300);
-      setTimeout(syncCityData, 1500);
+      setTimeout(syncCityData, 200);
+      setTimeout(syncCityData, 1000);
+      setTimeout(syncCityData, 3000);
 
       // Initialize Lucide Icons safely
       try {
