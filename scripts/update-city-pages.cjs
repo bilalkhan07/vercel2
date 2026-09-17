@@ -386,34 +386,56 @@ const defaultPortfolio = [
   {
     id: 'port-1',
     title: 'Tech Review High-CTR Thumbnail',
-    category: 'YouTube Thumbnail',
+    category: 'thumbnail',
     deliveryTime: '⚡ 32m Delivery',
     image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
-    description: 'Delivered layered PSD with custom cutout shadows and typography hook.'
+    description: 'Delivered layered PSD with custom cutout shadows and typography hook.',
+    client: 'TechVibe Hindi'
   },
   {
     id: 'port-2',
     title: 'Artisan Coffee Launch Carousel',
-    category: 'Social Media Creative',
+    category: 'social',
     deliveryTime: '⚡ 28m Delivery',
     image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
-    description: 'Minimalist aesthetic color grading with custom vector icons.'
+    description: 'Minimalist aesthetic color grading with custom vector icons.',
+    client: 'Brew Artisan Cafe'
   },
   {
     id: 'port-3',
     title: 'Nexus Pay Fintech Logo Mark',
-    category: 'Logo Design',
+    category: 'branding',
     deliveryTime: '⚡ 1h 15m Delivery',
     image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
-    description: 'Vector AI, EPS, SVG source files with dark & light theme variants.'
+    description: 'Vector AI, EPS, SVG source files with dark & light theme variants.',
+    client: 'NexusPay'
   },
   {
     id: 'port-4',
     title: 'Ayurvedic Skincare Serum Box Dieline',
-    category: 'Packaging & Labels',
+    category: 'print',
     deliveryTime: '⚡ 1h 45m Delivery',
     image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
-    description: 'CMYK 300 DPI print-ready dielines with foil stamping guidelines.'
+    description: 'CMYK 300 DPI print-ready dielines with foil stamping guidelines.',
+    client: 'Veda Naturals'
+  },
+  {
+    id: 'port-5',
+    title: 'Sunfest Goa EDM Music Poster',
+    category: 'print',
+    deliveryTime: '⚡ 48m Delivery',
+    image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=700&auto=format&fit=crop&q=80',
+    description: 'Vibrant typography with festival lineup layout and ticket QR.',
+    client: 'Sunfest Live'
+  },
+  {
+    id: 'port-6',
+    title: 'Pro Esports Tournament Cover',
+    category: 'thumbnail',
+    deliveryTime: '⚡ 35m Delivery',
+    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=700&auto=format&fit=crop&q=80',
+    description: 'Neon atmospheric glow and bold Hindi + English typography.',
+    client: 'Clan Alpha Gaming'
   }
 ];
 
@@ -497,22 +519,44 @@ function generateCityHtml(serviceSlug, cityKey) {
           </div>`;
   }).join('\n\n');
 
-  // Portfolio HTML (Exact match to Home Page)
+  // Portfolio HTML (Exact match to Home Page & store.js)
+  const catDisplayMap = {
+    'thumbnail': 'YouTube Thumbnail',
+    'social': 'Social Media Creative',
+    'branding': 'Brand Logo Design',
+    'print': 'Print & Packaging',
+    'vector': 'Vector Art & Tracing',
+    'packaging': 'Packaging & Labels',
+    'flyer': 'Flyers & Posters'
+  };
+  const catServiceMap = {
+    'thumbnail': 'youtube-thumbnail',
+    'social': 'social-media',
+    'branding': 'logo-design',
+    'print': 'visiting-card',
+    'vector': 'vector-art',
+    'packaging': 'packaging-design',
+    'flyer': 'flyer-design'
+  };
+
   const portfolioCardsHtml = defaultPortfolio.map(p => {
-    return `            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
+    const rawCat = (p.category || 'design').toLowerCase();
+    const catDisplayName = catDisplayMap[rawCat] || p.category || 'Graphic Design';
+    const serviceTarget = catServiceMap[rawCat] || serviceInfo.key || 'graphic-design';
+    return `            <div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
               <div>
                 <div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">
-                  <img src="${p.image}" alt="${p.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';" />
-                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">${p.deliveryTime}</span>
+                  <img src="${p.image}" alt="${p.title} in ${cityName}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />
+                  <span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">${p.deliveryTime || '⚡ 30-45m'}</span>
                 </div>
                 <div class="p-3.5 sm:p-5 space-y-1">
-                  <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">${p.category}</span>
+                  <span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">${catDisplayName}</span>
                   <h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-['Space_Grotesk'] leading-snug tracking-tight">${p.title}</h3>
                   <p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">${p.description}</p>
                 </div>
               </div>
               <div class="p-3.5 sm:p-5 pt-0">
-                <a href="request.html?city=${encodeURIComponent(cityName)}&service=${encodeURIComponent(serviceInfo.key)}" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
+                <a href="request.html?city=${encodeURIComponent(cityName)}&service=${encodeURIComponent(serviceTarget)}" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">
                   Order Similar in ${cityName} &rarr;
                 </a>
               </div>
@@ -1149,6 +1193,77 @@ ${portfolioCardsHtml}
             }).join('');
           }
         } catch(e) { console.error('City services render error:', e); }
+
+        // 2. Render Portfolio dynamically synchronized with Home Page & Store
+        try {
+          let portfolio = [];
+          if (window.DQStore && typeof window.DQStore.getPortfolio === 'function') {
+            portfolio = window.DQStore.getPortfolio();
+          } else {
+            try { portfolio = JSON.parse(localStorage.getItem('dq_portfolio_items') || '[]'); } catch(e) {}
+          }
+          const portContainer = document.getElementById('city-portfolio-grid');
+          if (portContainer && Array.isArray(portfolio) && portfolio.length > 0) {
+            const catDisplayMap = {
+              'thumbnail': 'YouTube Thumbnail',
+              'social': 'Social Media Creative',
+              'branding': 'Brand Logo Design',
+              'print': 'Print & Packaging',
+              'vector': 'Vector Art & Tracing',
+              'packaging': 'Packaging & Labels',
+              'flyer': 'Flyers & Posters',
+              'youtube thumbnail': 'YouTube Thumbnail',
+              'social media creative': 'Social Media Creative',
+              'logo design': 'Brand Logo Design',
+              'packaging & labels': 'Packaging & Labels',
+              'flyers & posters': 'Flyers & Posters'
+            };
+            const catServiceMap = {
+              'thumbnail': 'youtube-thumbnail',
+              'social': 'social-media',
+              'branding': 'logo-design',
+              'print': 'visiting-card',
+              'vector': 'vector-art',
+              'packaging': 'packaging-design',
+              'flyer': 'flyer-design',
+              'youtube thumbnail': 'youtube-thumbnail',
+              'social media creative': 'social-media',
+              'logo design': 'logo-design',
+              'packaging & labels': 'packaging-design',
+              'flyers & posters': 'flyer-design'
+            };
+
+            portContainer.innerHTML = portfolio.map(p => {
+              const delivery = p.deliveryTime || p.delivery || '⚡ 30-45m Delivery';
+              const pImg = (p.image && p.image.trim() !== '') ? p.image : 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';
+              const rawCat = (p.category || 'design').toLowerCase();
+              const catDisplayName = catDisplayMap[rawCat] || p.category || 'Graphic Design';
+              const targetService = catServiceMap[rawCat] || 'graphic-design';
+              const pTitle = p.title || 'Creative Design';
+              const pDesc = p.description || p.desc || 'Delivered layered source files with full master copyright.';
+              const orderUrl = 'request.html?city=' + encodeURIComponent(currentCityName) + '&service=' + encodeURIComponent(targetService);
+
+              return '<div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">' +
+                '<div>' +
+                  '<div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">' +
+                    '<img src="' + pImg + '" alt="' + pTitle + ' in ' + currentCityName + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />' +
+                    '<span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">' + delivery + '</span>' +
+                  '</div>' +
+                  '<div class="p-3.5 sm:p-5 space-y-1">' +
+                    '<span class="text-[10px] uppercase font-bold text-blue-600 tracking-wider block">' + catDisplayName + '</span>' +
+                    '<h3 class="font-extrabold text-slate-950 text-sm sm:text-base font-[\\'Space_Grotesk\\'] leading-snug tracking-tight">' + pTitle + '</h3>' +
+                    '<p class="text-xs font-semibold text-slate-600 line-clamp-2 leading-snug">' + pDesc + '</p>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="p-3.5 sm:p-5 pt-0">' +
+                  '<a href="' + orderUrl + '" class="w-full text-center py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-900 text-xs font-extrabold transition-all block">' +
+                    'Order Similar in ' + currentCityName + ' &rarr;' +
+                  '</a>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+          }
+        } catch(e) { console.error('City portfolio render error:', e); }
       }
 
       function populateCityOfficeInfo() {
@@ -1327,6 +1442,19 @@ ${portfolioCardsHtml}
           if (typeof db.subscribeServices === 'function') {
             try {
               db.subscribeServices(function() {
+                renderCityDynamicContent();
+              });
+            } catch(e) {}
+          }
+          if (typeof db.fetchPortfolio === 'function') {
+            try {
+              await db.fetchPortfolio();
+              renderCityDynamicContent();
+            } catch(e) {}
+          }
+          if (typeof db.subscribePortfolio === 'function') {
+            try {
+              db.subscribePortfolio(function() {
                 renderCityDynamicContent();
               });
             } catch(e) {}
