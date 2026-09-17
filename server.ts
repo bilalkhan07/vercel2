@@ -461,6 +461,21 @@ async function startServer() {
       return;
     }
 
+    // --- AUTO-REGENERATE ALL CITY PAGES ROUTE ---
+    if (req.url === '/api/admin/regenerate-city-pages' && req.method === 'POST') {
+      import('child_process').then(({ exec }) => {
+        exec('node scripts/update-city-pages.cjs', (error, stdout, stderr) => {
+          if (error) {
+            console.error('[CITY PAGES REGEN FAIL]:', error);
+          } else {
+            console.log('[CITY PAGES AUTO-REGENERATED SUCCESS]: All 162 city HTML files updated with latest portfolio.');
+          }
+        });
+      }).catch(err => console.error('Failed to import child_process:', err));
+      res.setHeader('Content-Type', 'application/json');
+      return res.end(JSON.stringify({ success: true, message: 'City pages regeneration background task initiated.' }));
+    }
+
     // --- UPDATE DESIGNER EMAIL ROUTE ---
     if (req.url === '/api/update-designer-email' && req.method === 'POST') {
       let body = '';
