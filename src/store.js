@@ -7,10 +7,9 @@
 (function() {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      if (localStorage.getItem('dq_services_img_v7') !== 'active') {
-        localStorage.removeItem('dq_services');
+      if (localStorage.getItem('dq_portfolio_sync_v2') !== 'active') {
         localStorage.removeItem('dq_portfolio_items');
-        localStorage.setItem('dq_services_img_v7', 'active');
+        localStorage.setItem('dq_portfolio_sync_v2', 'active');
       }
     }
   } catch (e) {}
@@ -26,6 +25,7 @@ const DEFAULT_SERVICES = [
     description: 'Instagram feeds, reels covers, carousel slides & promotional social media creatives.',
     image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80',
     icon: 'share-2',
+    slug: 'social-media-designer',
     ratio: 'Square (1:1)'
   },
   {
@@ -37,6 +37,7 @@ const DEFAULT_SERVICES = [
     description: 'High-CTR clickable thumbnails with crisp cutouts, rim lighting & creator hooks.',
     image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
     icon: 'youtube',
+    slug: 'youtube-thumbnail-designer',
     ratio: 'Landscape (16:9)'
   },
   {
@@ -48,6 +49,7 @@ const DEFAULT_SERVICES = [
     description: 'Convert blurry JPEGs, logos or sketches into infinite-resolution SVG & EPS vectors.',
     image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
     icon: 'pen-tool',
+    slug: 'vector-art-specialist',
     ratio: 'Square (1:1)'
   },
   {
@@ -59,6 +61,7 @@ const DEFAULT_SERVICES = [
     description: 'Double-sided luxury business card layouts with bleed margins, CMYK print & QR codes.',
     image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80',
     icon: 'credit-card',
+    slug: 'visiting-card-designer',
     ratio: 'Print / Custom'
   },
   {
@@ -69,7 +72,8 @@ const DEFAULT_SERVICES = [
     category: 'branding',
     description: 'Unique, memorable brand marks crafted manually from scratch with complete vector palettes.',
     image: 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80',
-    icon: 'award',
+    icon: 'crown',
+    slug: 'logo-designer',
     ratio: 'Square (1:1)'
   },
   {
@@ -81,81 +85,85 @@ const DEFAULT_SERVICES = [
     description: 'Die-cut accurate pouch designs, product labels, box wraps & compliant barcodes.',
     image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
     icon: 'package',
+    slug: 'packaging-label-designer',
+    ratio: 'Print / Custom'
+  },
+  {
+    id: 'flyer-design',
+    title: 'Flyers & Posters',
+    price: 449,
+    sla: '45-60 mins',
+    category: 'print',
+    description: 'Event notices, food menus, real estate promotional flyers, and corporate handouts.',
+    image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=700&auto=format&fit=crop&q=80',
+    icon: 'file-text',
+    slug: 'flyer-poster-designer',
+    ratio: 'Print / Custom'
+  },
+  {
+    id: 'brochure-design',
+    title: 'Brochures & Catalogs',
+    price: 699,
+    sla: '1.5-2 hours',
+    category: 'print',
+    description: 'Bi-fold, tri-fold, and multi-page corporate marketing decks and product catalogs.',
+    image: 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=700&auto=format&fit=crop&q=80',
+    icon: 'book-open',
+    slug: 'brochure-catalog-designer',
     ratio: 'Print / Custom'
   },
   {
     id: 'custom-design',
-    title: 'Custom Graphic Design',
-    price: 499,
-    sla: '45-60 mins',
+    title: 'All Graphic Design',
+    price: 359,
+    sla: '30-45 mins',
     category: 'custom',
     description: 'Bespoke posters, brochures, hoardings, standees, menus, merchandise, or any special design request.',
     image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&auto=format&fit=crop&q=80',
-    icon: 'palette',
+    icon: 'layout-grid',
+    slug: 'graphic-designer',
     ratio: 'Custom / As Required'
   }
 ];
 
+
+
 const DEFAULT_PORTFOLIO = [
   {
     id: 'port-1',
-    title: 'Tech Review High-CTR Thumbnail',
+    title: 'High CTR Thumbnail',
     category: 'thumbnail',
-    deliveryTime: '⚡ 32m Delivery',
-    image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
-    description: 'Delivered layered PSD with custom cutout shadows and typography hook.',
-    client: 'TechVibe Hindi',
-    city: 'Indore, MP'
+    deliveryTime: '⚡ 25m Delivery',
+    image: 'portfolio-high-ctr-thumbnail.webp',
+    description: 'High-CTR YouTube thumbnail designed with bold visuals, strong hierarchy, and attention-grabbing composition to maximize viewer engagement.',
+    client: 'CA Mohit Patidar'
   },
   {
-    id: 'port-2',
-    title: 'Artisan Coffee Launch Carousel',
-    category: 'social',
-    deliveryTime: '⚡ 28m Delivery',
-    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
-    description: 'Minimalist aesthetic color grading with custom vector icons.',
-    client: 'Brew Artisan Cafe',
-    city: 'Bengaluru'
-  },
-  {
-    id: 'port-3',
-    title: 'Nexus Pay Fintech Logo Mark',
+    id: 'port-1789560301635',
+    title: 'Avir Vada Pav',
     category: 'branding',
-    deliveryTime: '⚡ 1h 15m Delivery',
-    image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
-    description: 'Vector AI, EPS, SVG source files with dark & light theme variants.',
-    client: 'NexusPay',
-    city: 'Mumbai'
+    deliveryTime: '⚡ 1hr Delivery',
+    image: 'portfolio-avir-vada-pav.webp',
+    description: 'Custom logo designed for Avir Vada Pav, bringing the three family members together in a memorable and friendly brand identity.',
+    client: 'Avir Jain'
   },
   {
-    id: 'port-4',
-    title: 'Ayurvedic Skincare Serum Box Dieline',
-    category: 'print',
-    deliveryTime: '⚡ 1h 45m Delivery',
-    image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
-    description: 'CMYK 300 DPI print-ready dielines with foil stamping guidelines.',
-    client: 'Veda Naturals',
-    city: 'Jaipur'
+    id: 'port-1789562209675',
+    title: 'Brest Pump Packaging',
+    category: 'social',
+    deliveryTime: '⚡ 1.5hr Delivery',
+    image: 'portfolio-brest-pump.webp',
+    description: 'Professional breast pump packaging designed with a clean, modern, and trustworthy visual identity for a medical healthcare brand.',
+    client: 'Aditya Ajmera'
   },
   {
-    id: 'port-5',
-    title: 'Sunfest Goa EDM Music Poster',
-    category: 'print',
-    deliveryTime: '⚡ 48m Delivery',
-    image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=700&auto=format&fit=crop&q=80',
-    description: 'Vibrant typography with festival lineup layout and ticket QR.',
-    client: 'Sunfest Live',
-    city: 'Delhi NCR'
-  },
-  {
-    id: 'port-6',
-    title: 'Pro Esports Tournament Cover',
-    category: 'thumbnail',
-    deliveryTime: '⚡ 35m Delivery',
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=700&auto=format&fit=crop&q=80',
-    description: 'Neon atmospheric glow and bold Hindi + English typography.',
-    client: 'Clan Alpha Gaming',
-    city: 'Pune'
+    id: 'port-1789560174988',
+    title: 'Malhaari Insta Grid',
+    category: 'social',
+    deliveryTime: '⚡ 30m Delivery',
+    image: 'portfolio-malhaari-insta-grid.webp',
+    description: 'A visually engaging Instagram grid crafted to strengthen brand identity with clean, consistent, and modern creative direction.',
+    client: 'Hiten Sharma'
   }
 ];
 
@@ -233,7 +241,7 @@ const INITIAL_SAMPLE_JOBS = [];
 // Resilient Background Cloud Sync Helpers (Auto-retries if Supabase module is loading)
 function getCloudDb() {
   if (typeof window === 'undefined') return null;
-  return window.DQSupabase || window.DQFirebase || null;
+  return window.DQSupabase || null;
 }
 
 function syncServiceCloud(service) {
@@ -261,6 +269,108 @@ function deleteServiceCloud(serviceId) {
   const db = getCloudDb();
   if (db && typeof db.deleteService === 'function') {
     db.deleteService(serviceId).catch(e => console.warn('Service cloud delete error:', e));
+  }
+}
+
+// Background auto-listener for cloud services sync
+function initCloudServicesSync() {
+  if (typeof window === 'undefined') return;
+  let attempts = 0;
+  let syncInitialized = false;
+
+  const setupSync = () => {
+    if (syncInitialized) return;
+    const db = getCloudDb();
+    if (db && typeof db.fetchServices === 'function') {
+      syncInitialized = true;
+      try {
+        if (typeof db.subscribeServices === 'function') {
+          db.subscribeServices((liveServices) => {
+            if (Array.isArray(liveServices) && liveServices.length > 0) {
+              localStorage.setItem('dq_services', JSON.stringify(liveServices));
+              window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: liveServices }));
+            }
+          });
+        }
+        db.fetchServices().then((liveServices) => {
+          if (Array.isArray(liveServices) && liveServices.length > 0) {
+            localStorage.setItem('dq_services', JSON.stringify(liveServices));
+            window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: liveServices }));
+          }
+        }).catch(() => {});
+      } catch(e) {}
+    }
+  };
+
+  setupSync();
+  const interval = setInterval(() => {
+    attempts++;
+    setupSync();
+    if (syncInitialized || attempts > 20) {
+      clearInterval(interval);
+    }
+  }, 400);
+}
+// Background auto-listener for cloud reviews sync
+function initCloudReviewsSync() {
+  if (typeof window === 'undefined') return;
+  let attempts = 0;
+  let syncInitialized = false;
+
+  const setupReviewSync = () => {
+    if (syncInitialized) return;
+    const db = getCloudDb();
+    if (db && typeof db.fetchReviews === 'function') {
+      syncInitialized = true;
+      try {
+        if (typeof db.subscribeReviews === 'function') {
+          db.subscribeReviews((liveReviews) => {
+            if (Array.isArray(liveReviews) && liveReviews.length > 0) {
+              localStorage.setItem('dq_google_reviews', JSON.stringify(liveReviews));
+              window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: liveReviews }));
+            }
+          });
+        }
+        db.fetchReviews().then((liveReviews) => {
+          if (Array.isArray(liveReviews) && liveReviews.length > 0) {
+            localStorage.setItem('dq_google_reviews', JSON.stringify(liveReviews));
+            window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: liveReviews }));
+          }
+        }).catch(() => {});
+      } catch(e) {}
+    } else {
+      // Fallback to direct /api/get-reviews
+      fetch('/api/get-reviews')
+        .then(res => res.json())
+        .then(data => {
+          if (data && Array.isArray(data.reviews) && data.reviews.length > 0) {
+            localStorage.setItem('dq_google_reviews', JSON.stringify(data.reviews));
+            window.dispatchEvent(new CustomEvent('dq_reviews_updated', { detail: data.reviews }));
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  setupReviewSync();
+  const interval = setInterval(() => {
+    attempts++;
+    setupReviewSync();
+    if (syncInitialized || attempts > 20) {
+      clearInterval(interval);
+    }
+  }, 400);
+}
+
+if (typeof window !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initCloudServicesSync();
+      initCloudReviewsSync();
+    });
+  } else {
+    initCloudServicesSync();
+    initCloudReviewsSync();
   }
 }
 
@@ -294,6 +404,15 @@ function deletePortfolioCloud(itemId) {
 
 function syncReviewCloud(item) {
   if (typeof window === 'undefined' || !item || !item.id) return;
+  // Direct Server API call
+  try {
+    fetch('/api/save-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item })
+    }).catch(() => {});
+  } catch(e) {}
+
   const db = getCloudDb();
   if (db && typeof db.saveReviewItem === 'function') {
     db.saveReviewItem(item).catch(e => console.warn('Review cloud sync error:', e));
@@ -314,6 +433,14 @@ function syncReviewCloud(item) {
 
 function deleteReviewCloud(itemId) {
   if (typeof window === 'undefined' || !itemId) return;
+  try {
+    fetch('/api/delete-review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: itemId })
+    }).catch(() => {});
+  } catch(e) {}
+
   const db = getCloudDb();
   if (db && typeof db.deleteReviewItem === 'function') {
     db.deleteReviewItem(itemId).catch(e => console.warn('Review cloud delete error:', e));
@@ -363,40 +490,20 @@ window.DQStore = {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Check if custom-design exists in parsed, if not append it
-          if (!parsed.some(s => s.id === 'custom-design')) {
-            parsed.push({
-              id: 'custom-design',
-              title: 'Custom Graphic Design',
-              price: 499,
-              sla: '45-60 mins',
-              category: 'custom',
-              description: 'Bespoke posters, brochures, hoardings, standees, menus, merchandise, or any special design request.',
-              image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&auto=format&fit=crop&q=80',
-              icon: 'sparkles',
-              ratio: 'Custom / As Required'
-            });
-            localStorage.setItem('dq_services', JSON.stringify(parsed));
-          }
-          // Preserve custom/admin changed images; fallback to default if empty & enforce proper relative icons
           return parsed.map(s => {
-            if (s.id === 'youtube-thumbnail') s.icon = 'youtube';
-            else if (s.id === 'logo-design') s.icon = 'award';
-            else if (s.id === 'social-media') s.icon = 'share-2';
-            else if (s.id === 'vector-art') s.icon = 'pen-tool';
-            else if (s.id === 'visiting-card') s.icon = 'credit-card';
-            else if (s.id === 'packaging-design') s.icon = 'package';
-            else if (s.id === 'custom-design' && (!s.icon || s.icon === 'sparkles')) s.icon = 'palette';
-
-            if (!s.image || s.image.includes('.png')) {
-              if (s.id === 'social-media') s.image = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';
-              else if (s.id === 'youtube-thumbnail') s.image = 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80';
-              else if (s.id === 'vector-art') s.image = 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80';
-              else if (s.id === 'visiting-card') s.image = 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80';
-              else if (s.id === 'logo-design') s.image = 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80';
-              else if (s.id === 'packaging-design') s.image = 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80';
-              else if (s.id === 'custom-design') s.image = 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=700&auto=format&fit=crop&q=80';
-              else s.image = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';
+            // Assign nice fallback icons if missing
+            if (!s.icon) {
+              const id = (s.id || s.category || '').toLowerCase();
+              if (id.includes('youtube') || id.includes('thumbnail')) s.icon = 'youtube';
+              else if (id.includes('logo') || id.includes('branding')) s.icon = 'award';
+              else if (id.includes('social')) s.icon = 'share-2';
+              else if (id.includes('vector')) s.icon = 'pen-tool';
+              else if (id.includes('visiting') || id.includes('card')) s.icon = 'credit-card';
+              else if (id.includes('pack') || id.includes('label')) s.icon = 'package';
+              else s.icon = 'palette';
+            }
+            if (!s.image || s.image.trim() === '') {
+              s.image = 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80';
             }
             return s;
           });
@@ -404,6 +511,15 @@ window.DQStore = {
       }
     } catch (e) {}
     localStorage.setItem('dq_services', JSON.stringify(DEFAULT_SERVICES));
+    return DEFAULT_SERVICES;
+  },
+
+  resetServicesToDefault() {
+    localStorage.setItem('dq_services', JSON.stringify(DEFAULT_SERVICES));
+    window.dispatchEvent(new CustomEvent('dq_services_updated', { detail: DEFAULT_SERVICES }));
+    if (Array.isArray(DEFAULT_SERVICES)) {
+      DEFAULT_SERVICES.forEach(s => syncServiceCloud(s));
+    }
     return DEFAULT_SERVICES;
   },
 
@@ -484,17 +600,19 @@ window.DQStore = {
       id: 'port-' + Date.now(),
       title: item.title || 'Creative Project',
       category: item.category || 'social',
-      deliveryTime: item.deliveryTime || '⚡ 30-45m Delivery',
+      delivery: item.delivery || item.deliveryTime || '⚡ 30-45m Delivery',
+      deliveryTime: item.delivery || item.deliveryTime || '⚡ 30-45m Delivery',
       image: item.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
-      description: item.description || 'Handcrafted vector design delivered with layered source files.',
-      client: item.client || 'Verified Brand',
-      city: item.city || 'India'
+      description: item.description !== undefined ? item.description : (item.desc || ''),
+      client: item.client || 'Verified Client'
     };
     list.unshift(newItem);
     this.savePortfolio(list);
     syncPortfolioCloud(newItem);
     return newItem;
   },
+
+
 
   deletePortfolioItem(portId) {
     const list = this.getPortfolio();
@@ -924,11 +1042,14 @@ window.DQStore = {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(p => ({
-            client: 'Verified Brand',
-            city: 'India',
-            ...p
-          }));
+          const hasOldDummy = parsed.some(p => p && p.title && p.title.includes('Tech Review High-CTR'));
+          if (!hasOldDummy) {
+            return parsed.map(p => ({
+              client: 'Verified Brand',
+              city: 'India',
+              ...p
+            }));
+          }
         }
       }
     } catch (e) {}
