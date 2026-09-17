@@ -381,63 +381,81 @@ function getPillIcon(iconName) {
   return `<svg class="w-3.5 h-3.5 text-blue-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>`;
 }
 
-// Default Portfolio items mirroring Home Page and store.js
+// Default Portfolio items mirroring Supabase & store.js
 const defaultPortfolio = [
   {
     id: 'port-1',
-    title: 'Tech Review High-CTR Thumbnail',
+    title: 'High CTR Thumbnail',
     category: 'thumbnail',
-    deliveryTime: '⚡ 32m Delivery',
-    image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
-    description: 'Delivered layered PSD with custom cutout shadows and typography hook.',
-    client: 'TechVibe Hindi'
-  },
-  {
-    id: 'port-2',
-    title: 'Artisan Coffee Launch Carousel',
-    category: 'social',
-    deliveryTime: '⚡ 28m Delivery',
+    deliveryTime: '⚡ 25m Delivery',
     image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
-    description: 'Minimalist aesthetic color grading with custom vector icons.',
-    client: 'Brew Artisan Cafe'
+    description: 'High-CTR YouTube thumbnail designed with bold visuals, strong hierarchy, and attention-grabbing composition to maximize viewer engagement.',
+    client: 'CA Mohit Patidar'
   },
   {
-    id: 'port-3',
-    title: 'Nexus Pay Fintech Logo Mark',
+    id: 'port-1789560301635',
+    title: 'Avir Vada Pav',
     category: 'branding',
-    deliveryTime: '⚡ 1h 15m Delivery',
-    image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
-    description: 'Vector AI, EPS, SVG source files with dark & light theme variants.',
-    client: 'NexusPay'
+    deliveryTime: '⚡ 1hr Delivery',
+    image: 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80',
+    description: 'Custom logo designed for Avir Vada Pav, bringing the three family members together in a memorable and friendly brand identity.',
+    client: 'Avir Jain'
   },
   {
-    id: 'port-4',
-    title: 'Ayurvedic Skincare Serum Box Dieline',
-    category: 'print',
-    deliveryTime: '⚡ 1h 45m Delivery',
-    image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
-    description: 'CMYK 300 DPI print-ready dielines with foil stamping guidelines.',
-    client: 'Veda Naturals'
+    id: 'port-1789562209675',
+    title: 'Brest Pump Packaging',
+    category: 'social',
+    deliveryTime: '⚡ 1.5hr Delivery',
+    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80',
+    description: 'Professional breast pump packaging designed with a clean, modern, and trustworthy visual identity for a medical healthcare brand.',
+    client: 'Aditya Ajmera'
   },
   {
-    id: 'port-5',
-    title: 'Sunfest Goa EDM Music Poster',
-    category: 'print',
-    deliveryTime: '⚡ 48m Delivery',
-    image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=700&auto=format&fit=crop&q=80',
-    description: 'Vibrant typography with festival lineup layout and ticket QR.',
-    client: 'Sunfest Live'
-  },
-  {
-    id: 'port-6',
-    title: 'Pro Esports Tournament Cover',
-    category: 'thumbnail',
-    deliveryTime: '⚡ 35m Delivery',
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=700&auto=format&fit=crop&q=80',
-    description: 'Neon atmospheric glow and bold Hindi + English typography.',
-    client: 'Clan Alpha Gaming'
+    id: 'port-1789560174988',
+    title: 'Malhaari Insta Grid',
+    category: 'social',
+    deliveryTime: '⚡ 30m Delivery',
+    image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80',
+    description: 'A visually engaging Instagram grid crafted to strengthen brand identity with clean, consistent, and modern creative direction.',
+    client: 'Hiten Sharma'
   }
 ];
+
+async function fetchLivePortfolioFromSupabase() {
+  try {
+    const res = await fetch('https://lwcuxohrnrkjyfmszxab.supabase.co/rest/v1/portfolio?select=*', {
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo'
+      }
+    });
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows.map(d => {
+          let meta = {};
+          if (Array.isArray(d.tags)) {
+            d.tags.forEach(t => {
+              if (t && t.startsWith('{')) { try { meta = JSON.parse(t); } catch(e){} }
+            });
+          }
+          return {
+            id: d.id,
+            title: d.title,
+            category: d.category,
+            deliveryTime: meta.deliveryTime || meta.delivery || (Array.isArray(d.tags) && d.tags[0]) || '⚡ 30m Delivery',
+            image: d.image,
+            description: meta.description || meta.desc || d.description || '',
+            client: meta.client || 'Verified Client'
+          };
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Could not fetch live Supabase portfolio for static files, using fallback:', err.message);
+  }
+  return defaultPortfolio;
+}
 
 // Pills list for targeted service switching
 const serviceSlugList = [
@@ -452,7 +470,7 @@ const serviceSlugList = [
   { slug: 'packaging-label-designer', key: 'packaging-design', label: 'Packaging & Labels', icon: 'package' }
 ];
 
-function generateCityHtml(serviceSlug, cityKey) {
+function generateCityHtml(serviceSlug, cityKey, activePortfolio) {
   const cityName = cityDisplayMap[cityKey] || (cityKey.charAt(0).toUpperCase() + cityKey.slice(1));
   const serviceInfo = serviceDataMap[serviceSlug] || serviceDataMap['graphic-designer'];
   const fileName = `${serviceSlug}-in-${cityKey}.html`;
@@ -539,7 +557,8 @@ function generateCityHtml(serviceSlug, cityKey) {
     'flyer': 'flyer-design'
   };
 
-  const portfolioCardsHtml = defaultPortfolio.map(p => {
+  const portfolioItemsToRender = (Array.isArray(activePortfolio) && activePortfolio.length > 0) ? activePortfolio : defaultPortfolio;
+  const portfolioCardsHtml = portfolioItemsToRender.map(p => {
     const rawCat = (p.category || 'design').toLowerCase();
     const catDisplayName = catDisplayMap[rawCat] || p.category || 'Graphic Design';
     const serviceTarget = catServiceMap[rawCat] || serviceInfo.key || 'graphic-design';
@@ -594,6 +613,9 @@ function generateCityHtml(serviceSlug, cityKey) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="store.js"></script>
+    <script type="module" src="/src/supabase-service.ts"></script>
     <script src="security.js"></script>
     <!-- Design Quixo Source & UI Security -->
     <script>
@@ -1471,9 +1493,41 @@ ${portfolioCardsHtml}
             } catch(e) {}
           }
         }
+        // Direct REST fetch to guarantee instant sync without waiting for modules
+        try {
+          fetch('https://lwcuxohrnrkjyfmszxab.supabase.co/rest/v1/portfolio?select=*', {
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo',
+              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo'
+            }
+          }).then(function(r) { return r.json(); }).then(function(rows) {
+            if (Array.isArray(rows) && rows.length > 0) {
+              var parsed = rows.map(function(d) {
+                var meta = {};
+                if (Array.isArray(d.tags)) {
+                  d.tags.forEach(function(t) {
+                    if (t && t.startsWith('{')) { try { meta = JSON.parse(t); } catch(e){} }
+                  });
+                }
+                return {
+                  id: d.id,
+                  title: d.title,
+                  category: d.category,
+                  deliveryTime: meta.deliveryTime || meta.delivery || (Array.isArray(d.tags) && d.tags[0]) || '⚡ 30m Delivery',
+                  image: d.image,
+                  description: meta.description || meta.desc || d.description || '',
+                  client: meta.client || 'Verified Client'
+                };
+              });
+              localStorage.setItem('dq_portfolio_items', JSON.stringify(parsed));
+              renderCityDynamicContent();
+            }
+          }).catch(function(){});
+        } catch(e) {}
       }
-      setTimeout(syncCityData, 300);
-      setTimeout(syncCityData, 1500);
+      setTimeout(syncCityData, 200);
+      setTimeout(syncCityData, 1000);
+      setTimeout(syncCityData, 3000);
 
       // Initialize Lucide Icons safely
       try {
@@ -1486,19 +1540,43 @@ ${portfolioCardsHtml}
 </html>`;
 }
 
-// Run through all cities and services
-let generatedCount = 0;
-const cities = Object.keys(cityDisplayMap);
-const serviceSlugs = Object.keys(serviceDataMap);
-
-for (const city of cities) {
-  for (const slug of serviceSlugs) {
-    const htmlContent = generateCityHtml(slug, city);
-    const filePath = path.join(process.cwd(), `${slug}-in-${city}.html`);
-    fs.writeFileSync(filePath, htmlContent, 'utf8');
-    generatedCount++;
+// Run through all cities and services with live Supabase portfolio
+async function runAllCityGenerations() {
+  let livePortfolio = defaultPortfolio;
+  try {
+    livePortfolio = await fetchLivePortfolioFromSupabase();
+    console.log(`Loaded ${livePortfolio.length} active portfolio items for static page rendering.`);
+  } catch(e) {
+    console.warn('Using default portfolio for static render:', e);
   }
+
+  let generatedCount = 0;
+  const cities = Object.keys(cityDisplayMap);
+  const serviceSlugs = Object.keys(serviceDataMap);
+
+  for (const city of cities) {
+    for (const slug of serviceSlugs) {
+      const htmlContent = generateCityHtml(slug, city, livePortfolio);
+      const filePath = path.join(process.cwd(), `${slug}-in-${city}.html`);
+      fs.writeFileSync(filePath, htmlContent, 'utf8');
+      generatedCount++;
+    }
+  }
+
+  console.log(`Successfully generated ${generatedCount} SEO City & Service pages with live portfolio!`);
+  return generatedCount;
 }
 
-console.log(`Successfully generated ${generatedCount} SEO City & Service pages with Best titles, brand theme banner, and unified home page data!`);
-process.exit(0);
+if (require.main === module) {
+  runAllCityGenerations().then(() => {
+    process.exit(0);
+  }).catch(err => {
+    console.error('Fatal error during city generation:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  runAllCityGenerations,
+  fetchLivePortfolioFromSupabase
+};
