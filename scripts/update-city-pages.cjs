@@ -1575,6 +1575,104 @@ async function runAllCityGenerations() {
   }
 
   console.log(`Successfully generated ${generatedCount} SEO City & Service pages with live portfolio!`);
+
+  // Generate ultra-clean, perfectly formatted sitemap.xml for Google Search Console
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    let sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Core Authority Pages -->
+  <url>
+    <loc>https://designquixo.in/</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/services.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/cities.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/latest-works.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/request.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/about.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/contact.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/terms.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/privacy.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/login.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://designquixo.in/track.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>always</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- 16 Indian Cities & Targeted Design Hub Pages (162 Hubs) -->
+`;
+
+    for (const city of cities) {
+      for (const slug of serviceSlugs) {
+        const isGraphic = slug === 'graphic-designer';
+        const priority = isGraphic ? '0.85' : '0.75';
+        sitemapXml += `  <url>
+    <loc>https://designquixo.in/${slug}-in-${city}.html</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>${priority}</priority>
+  </url>\n`;
+      }
+    }
+
+    sitemapXml += `</urlset>\n`;
+    fs.writeFileSync(path.join(process.cwd(), 'sitemap.xml'), sitemapXml, 'utf8');
+    fs.writeFileSync(path.join(process.cwd(), 'public', 'sitemap.xml'), sitemapXml, 'utf8');
+    console.log('Successfully regenerated sitemap.xml with updated timestamp & clean URLs!');
+  } catch(sErr) {
+    console.error('Error generating sitemap.xml:', sErr);
+  }
+
   return generatedCount;
 }
 
