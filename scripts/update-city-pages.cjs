@@ -652,9 +652,6 @@ function generateCityHtml(serviceSlug, cityKey, activePortfolio) {
       })();
     </script>
     <link rel="stylesheet" href="src/index.css" />
-    <script src="store.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script type="module" src="/src/supabase-service.ts"></script>
     <!-- Structured Data Schema for Local SEO -->
     <script id="seo-schema" type="application/ld+json">
     {
@@ -1217,12 +1214,18 @@ ${portfolioCardsHtml}
         } catch(e) { console.error('City services render error:', e); }
 
         // 2. Render Portfolio dynamically synchronized with Home Page & Store
+        renderCityPortfolio();
+      }
+
+      function renderCityPortfolio(customList) {
         try {
-          let portfolio = [];
-          if (window.DQStore && typeof window.DQStore.getPortfolio === 'function') {
-            portfolio = window.DQStore.getPortfolio();
-          } else {
-            try { portfolio = JSON.parse(localStorage.getItem('dq_portfolio_items') || '[]'); } catch(e) {}
+          let portfolio = customList;
+          if (!Array.isArray(portfolio) || portfolio.length === 0) {
+            if (window.DQStore && typeof window.DQStore.getPortfolio === 'function') {
+              portfolio = window.DQStore.getPortfolio();
+            } else {
+              try { portfolio = JSON.parse(localStorage.getItem('dq_portfolio_items') || '[]'); } catch(e) {}
+            }
           }
           const portContainer = document.getElementById('city-portfolio-grid');
           if (portContainer && Array.isArray(portfolio) && portfolio.length > 0) {
@@ -1268,7 +1271,7 @@ ${portfolioCardsHtml}
               return '<div class="group rounded-2xl sm:rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">' +
                 '<div>' +
                   '<div class="relative h-28 sm:h-48 bg-slate-100 overflow-hidden">' +
-                    '<img src="' + pImg + '" alt="' + pTitle + ' in ' + currentCityName + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="window.handlePortImgFallback && window.handlePortImgFallback(this);" />' +
+                    '<img src="' + pImg + '" alt="' + pTitle + ' in ' + currentCityName + '" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.onerror=null; this.src=\\'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80\\';" />' +
                     '<span class="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 bg-white/95 text-emerald-800 text-[9px] sm:text-xs font-extrabold px-2 py-0.5 rounded-full shadow-xs">' + delivery + '</span>' +
                   '</div>' +
                   '<div class="p-3.5 sm:p-5 space-y-1">' +
@@ -1436,12 +1439,20 @@ ${portfolioCardsHtml}
 
       // Live updates from Admin updates or storage sync
       window.addEventListener('dq_services_updated', renderCityDynamicContent);
-      window.addEventListener('dq_portfolio_updated', renderCityDynamicContent);
+      window.addEventListener('dq_portfolio_updated', (e) => {
+        renderCityPortfolio(e && e.detail);
+      });
       window.addEventListener('dq_cities_updated', populateCityOfficeInfo);
       window.addEventListener('dq_reviews_updated', renderCityReviews);
       window.addEventListener('storage', (e) => {
-        if (e.key === 'dq_services' || e.key === 'dq_portfolio_items') {
+        if (e.key === 'dq_services') {
           renderCityDynamicContent();
+        }
+        if (e.key === 'dq_portfolio_items') {
+          try {
+            const fresh = JSON.parse(e.newValue || '[]');
+            if (Array.isArray(fresh) && fresh.length > 0) renderCityPortfolio(fresh);
+          } catch(err) {}
         }
         if (e.key === 'dq_city_addresses') {
           populateCityOfficeInfo();
@@ -1470,14 +1481,14 @@ ${portfolioCardsHtml}
           }
           if (typeof db.fetchPortfolio === 'function') {
             try {
-              await db.fetchPortfolio();
-              renderCityDynamicContent();
+              const livePort = await db.fetchPortfolio();
+              if (Array.isArray(livePort) && livePort.length > 0) renderCityPortfolio(livePort);
             } catch(e) {}
           }
           if (typeof db.subscribePortfolio === 'function') {
             try {
-              db.subscribePortfolio(function() {
-                renderCityDynamicContent();
+              db.subscribePortfolio(function(livePort) {
+                if (Array.isArray(livePort) && livePort.length > 0) renderCityPortfolio(livePort);
               });
             } catch(e) {}
           }
@@ -1520,7 +1531,7 @@ ${portfolioCardsHtml}
                 };
               });
               localStorage.setItem('dq_portfolio_items', JSON.stringify(parsed));
-              renderCityDynamicContent();
+              renderCityPortfolio(parsed);
             }
           }).catch(function(){});
         } catch(e) {}
