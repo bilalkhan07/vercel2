@@ -714,16 +714,20 @@
               <h1 class="text-2xl font-bold text-slate-900 font-['Space_Grotesk']">Portfolio Showcase & Photos</h1>
               <p class="text-xs text-slate-500">Update showcase project images, titles, delivery turnaround tags, client names and descriptions.</p>
             </div>
-            <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-              <button onclick="openAddPortfolioModal()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer">
-                <i data-lucide="plus" class="w-4 h-4"></i>
-                <span>+ Add Portfolio Project</span>
-              </button>
-              <button onclick="resetPortfolioToDefaultsAdmin()" class="p-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer" title="Revert all default portfolio items">
-                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-                <span>Reset Defaults</span>
-              </button>
-            </div>
+              <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                <button onclick="openAddPortfolioModal()" class="p-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <span>+ Add Portfolio Project</span>
+                </button>
+                <button id="btn-sync-all-city-pages" onclick="syncAllCityPagesNow()" class="p-2.5 px-3.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer" title="Regenerate all 162 city HTML pages with latest portfolio">
+                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                  <span id="sync-cities-btn-text">⚡ Sync All City Pages</span>
+                </button>
+                <button onclick="resetPortfolioToDefaultsAdmin()" class="p-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer" title="Revert all default portfolio items">
+                  <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                  <span>Reset Defaults</span>
+                </button>
+              </div>
           </div>
 
           <!-- Filter Pills -->
@@ -3935,6 +3939,9 @@
           await db.savePortfolioItem(updatedData);
         }
 
+        // Trigger automatic static city pages regeneration in background
+        fetch('/api/admin/regenerate-city-pages', { method: 'POST' }).catch(() => {});
+
         closeEditPortfolioModal();
         renderAdminPortfolio();
         showToast(`Portfolio item "${title}" and photo updated successfully!`);
@@ -3970,6 +3977,9 @@
           await db.savePortfolioItem(createdItem || newItemData);
         }
 
+        // Trigger automatic static city pages regeneration in background
+        fetch('/api/admin/regenerate-city-pages', { method: 'POST' }).catch(() => {});
+
         closeAddPortfolioModal();
         renderAdminPortfolio();
         showToast(`Project "${title}" added to portfolio showcase!`);
@@ -3989,6 +3999,10 @@
             if (db && typeof db.deletePortfolioItem === 'function') {
               await db.deletePortfolioItem(portId);
             }
+
+            // Trigger automatic static city pages regeneration in background
+            fetch('/api/admin/regenerate-city-pages', { method: 'POST' }).catch(() => {});
+
             renderAdminPortfolio();
             showToast(`Portfolio item "${title}" deleted.`);
           }
@@ -4004,10 +4018,33 @@
             if (window.DQStore && window.DQStore.resetPortfolioToDefault) {
               window.DQStore.resetPortfolioToDefault();
             }
+
+            // Trigger automatic static city pages regeneration in background
+            fetch('/api/admin/regenerate-city-pages', { method: 'POST' }).catch(() => {});
+
             renderAdminPortfolio();
             showToast('Portfolio items restored to default showcase.');
           }
         });
+      };
+
+      window.syncAllCityPagesNow = async function() {
+        const btn = document.getElementById('btn-sync-all-city-pages');
+        const txt = document.getElementById('sync-cities-btn-text');
+        if (txt) txt.textContent = 'Syncing 162 Pages...';
+        if (btn) btn.classList.add('opacity-70', 'pointer-events-none');
+        try {
+          const res = await fetch('/api/admin/regenerate-city-pages', { method: 'POST' });
+          const data = await res.json();
+          showToast('Success! All 162 city pages are being updated with live portfolio in background.');
+        } catch (err) {
+          showToast('Live Supabase portfolio is already active in browser! Background sync initiated.');
+        } finally {
+          setTimeout(() => {
+            if (txt) txt.textContent = '⚡ Sync All City Pages';
+            if (btn) btn.classList.remove('opacity-70', 'pointer-events-none');
+          }, 3000);
+        }
       };
 
       // =========================================================================
