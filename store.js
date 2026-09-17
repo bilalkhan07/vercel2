@@ -7,10 +7,9 @@
 (function() {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      if (localStorage.getItem('dq_services_v12') !== 'active') {
-        localStorage.removeItem('dq_services');
+      if (localStorage.getItem('dq_portfolio_sync_v2') !== 'active') {
         localStorage.removeItem('dq_portfolio_items');
-        localStorage.setItem('dq_services_v12', 'active');
+        localStorage.setItem('dq_portfolio_sync_v2', 'active');
       }
     }
   } catch (e) {}
@@ -132,57 +131,39 @@ const DEFAULT_SERVICES = [
 const DEFAULT_PORTFOLIO = [
   {
     id: 'port-1',
-    title: 'Tech Review High-CTR Thumbnail',
+    title: 'High CTR Thumbnail',
     category: 'thumbnail',
-    deliveryTime: '⚡ 32m Delivery',
-    image: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=700&auto=format&fit=crop&q=80',
-    description: 'Delivered layered PSD with custom cutout shadows and typography hook.',
-    client: 'TechVibe Hindi'
-  },
-  {
-    id: 'port-2',
-    title: 'Artisan Coffee Launch Carousel',
-    category: 'social',
-    deliveryTime: '⚡ 28m Delivery',
+    deliveryTime: '⚡ 25m Delivery',
     image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
-    description: 'Minimalist aesthetic color grading with custom vector icons.',
-    client: 'Brew Artisan Cafe'
+    description: 'High-CTR YouTube thumbnail designed with bold visuals, strong hierarchy, and attention-grabbing composition to maximize viewer engagement.',
+    client: 'CA Mohit Patidar'
   },
   {
-    id: 'port-3',
-    title: 'Nexus Pay Fintech Logo Mark',
+    id: 'port-1789560301635',
+    title: 'Avir Vada Pav',
     category: 'branding',
-    deliveryTime: '⚡ 1h 15m Delivery',
-    image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=700&auto=format&fit=crop&q=80',
-    description: 'Vector AI, EPS, SVG source files with dark & light theme variants.',
-    client: 'NexusPay'
+    deliveryTime: '⚡ 1hr Delivery',
+    image: 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80',
+    description: 'Custom logo designed for Avir Vada Pav, bringing the three family members together in a memorable and friendly brand identity.',
+    client: 'Avir Jain'
   },
   {
-    id: 'port-4',
-    title: 'Ayurvedic Skincare Serum Box Dieline',
-    category: 'print',
-    deliveryTime: '⚡ 1h 45m Delivery',
-    image: 'https://images.unsplash.com/photo-1547949003-9792a18a2601?w=700&auto=format&fit=crop&q=80',
-    description: 'CMYK 300 DPI print-ready dielines with foil stamping guidelines.',
-    client: 'Veda Naturals'
+    id: 'port-1789562209675',
+    title: 'Brest Pump Packaging',
+    category: 'social',
+    deliveryTime: '⚡ 1.5hr Delivery',
+    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80',
+    description: 'Professional breast pump packaging designed with a clean, modern, and trustworthy visual identity for a medical healthcare brand.',
+    client: 'Aditya Ajmera'
   },
   {
-    id: 'port-5',
-    title: 'Sunfest Goa EDM Music Poster',
-    category: 'print',
-    deliveryTime: '⚡ 48m Delivery',
-    image: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=700&auto=format&fit=crop&q=80',
-    description: 'Vibrant typography with festival lineup layout and ticket QR.',
-    client: 'Sunfest Live'
-  },
-  {
-    id: 'port-6',
-    title: 'Pro Esports Tournament Cover',
-    category: 'thumbnail',
-    deliveryTime: '⚡ 35m Delivery',
-    image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=700&auto=format&fit=crop&q=80',
-    description: 'Neon atmospheric glow and bold Hindi + English typography.',
-    client: 'Clan Alpha Gaming'
+    id: 'port-1789560174988',
+    title: 'Malhaari Insta Grid',
+    category: 'social',
+    deliveryTime: '⚡ 30m Delivery',
+    image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80',
+    description: 'A visually engaging Instagram grid crafted to strengthen brand identity with clean, consistent, and modern creative direction.',
+    client: 'Hiten Sharma'
   }
 ];
 
@@ -1061,11 +1042,14 @@ window.DQStore = {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(p => ({
-            client: 'Verified Brand',
-            city: 'India',
-            ...p
-          }));
+          const hasOldDummy = parsed.some(p => p && p.title && p.title.includes('Tech Review High-CTR'));
+          if (!hasOldDummy) {
+            return parsed.map(p => ({
+              client: 'Verified Brand',
+              city: 'India',
+              ...p
+            }));
+          }
         }
       }
     } catch (e) {}
