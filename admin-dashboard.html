@@ -359,7 +359,7 @@
               <p class="text-xs text-slate-500 mt-0.5">Every design request logged in real-time with instant 3-4 second audio chime alert when new briefs arrive.</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
-              <button type="button" id="admin-test-sound-btn" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing your MP3 5 times...'); }" class="p-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
+              <button type="button" id="admin-test-sound-btn" onclick="if(window.DQSoundService) { window.DQSoundService.unlockAudio(); window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing sound alert 5 times...'); }" class="p-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
                 <i data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
                 <span>Test MP3 Sound (5x)</span>
               </button>
@@ -2370,8 +2370,18 @@
               timestamp: Date.now()
             }));
 
-            // 5. Realtime Supabase Deletion
+            // 5. Realtime Supabase Deletion & Server Blacklist Sync
             try {
+              fetch('/api/delete-designer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: cleanKey,
+                  email: targetEmail,
+                  phone: targetPhone
+                })
+              }).catch(e => console.warn('Server delete designer api warning:', e));
+
               const db = window.DQSupabase || window.DQFirebase;
               const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
               const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
