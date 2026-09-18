@@ -49,6 +49,7 @@
     </script>
     <link rel="stylesheet" href="src/index.css" />
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="notification-sound.js"></script>
     <script src="store.js"></script>
     <script type="module" src="/src/supabase-service.ts"></script>
   </head>
@@ -1081,15 +1082,24 @@
             window.DQStore.saveJobs(filtered);
           }
 
+          // Register unacknowledged sound job so Admin / Designer dashboard alerts immediately
+          let unacked = [];
+          try { unacked = JSON.parse(localStorage.getItem('dq_unacknowledged_sound_jobs') || '[]'); } catch(e) {}
+          if (!unacked.includes(jobId)) unacked.push(jobId);
+          localStorage.setItem('dq_unacknowledged_sound_jobs', JSON.stringify(unacked));
+
           // Instant cross-tab BroadcastChannel dispatch for 0ms sound trigger in open Admin/Designer tabs
           if (typeof BroadcastChannel !== 'undefined') {
             const bc = new BroadcastChannel('dq_realtime_jobs');
             bc.postMessage({ type: 'NEW_JOB', job: newJobObj });
           }
 
-          // Play confirmation chime on request page
-          if (window.DQSoundService && typeof window.DQSoundService.playSingleTone === 'function') {
-            window.DQSoundService.playSingleTone();
+          // Play 5x MP3 alert immediately on submission (user just clicked, audio is 100% unlocked)
+          if (window.DQSoundService) {
+            window.DQSoundService.unlockAudio();
+            if (typeof window.DQSoundService.playNewJobChime === 'function') {
+              window.DQSoundService.playNewJobChime(5);
+            }
           }
         } catch (err) {}
 
