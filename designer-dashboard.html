@@ -116,9 +116,9 @@
       <!-- Top Right Status & Profile Pill -->
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <!-- Test Sound Button -->
-        <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing your MP3 5 times...'); }" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs" title="Test 5x MP3 Notification Sound">
+        <button type="button" id="designer-test-sound-btn" onclick="if(window.DQSoundService) { window.DQSoundService.unlockAudio(); window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing sound alert 5 times...'); }" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs" title="Test 5x Notification Sound">
           <i data-lucide="volume-2" class="w-3.5 h-3.5 text-emerald-600"></i>
-          <span class="hidden sm:inline">🔊 Test MP3 Sound (5x)</span>
+          <span class="hidden sm:inline">🔊 Test Sound (5x)</span>
           <span class="sm:hidden">Test (5x)</span>
         </button>
 
@@ -1175,6 +1175,8 @@
           const cleanEmail = (currentUser.email || (currentUser.identifier && currentUser.identifier.includes('@') ? currentUser.identifier : '')).toString().trim().toLowerCase();
 
           if (currentUser.role === 'admin' || currentUser.role === 'support') {
+            isApproved = true;
+          } else if (currentUser.status === 'Approved') {
             isApproved = true;
           } else {
             // Find registered record for this current user
