@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="security.js"></script>
+    <script src="notification-sound.js"></script>
     <script src="store.js"></script>
     <script>
       (function(){
@@ -105,9 +106,9 @@
       </div>
 
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(); if(typeof showToast==='function') showToast('🔔 Playing 3.5-second Notification Chime...'); }" class="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-400/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm">
+        <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing your MP3 5 times...'); }" class="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-400/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm">
           <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
-          <span>🔔 Test Chime (3.5s)</span>
+          <span>🔊 Test MP3 Sound (5x)</span>
         </button>
         <a href="index.html" class="text-xs text-slate-400 hover:text-white font-semibold hidden sm:inline">Public Site</a>
         <button id="admin-logout-btn" class="flex items-center gap-1.5 bg-rose-600/20 text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
@@ -358,9 +359,9 @@
               <p class="text-xs text-slate-500 mt-0.5">Every design request logged in real-time with instant 3-4 second audio chime alert when new briefs arrive.</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
-              <button type="button" id="admin-test-sound-btn" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(); showToast('🔊 Playing 3.5s Notification Chime test...'); }" class="p-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
+              <button type="button" id="admin-test-sound-btn" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing your MP3 5 times...'); }" class="p-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs">
                 <i data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
-                <span>Test Alert Sound (3.5s)</span>
+                <span>Test MP3 Sound (5x)</span>
               </button>
               <button id="clear-jobs-btn" class="p-2.5 px-3.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-colors">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
