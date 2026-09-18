@@ -1338,17 +1338,27 @@
               const dPhone = (d.phone || d.whatsapp || d.identifier || d.id || '').toString().replace(/\D/g, '').slice(-10);
               const dId = (d.id || '').toString().toLowerCase().trim();
               if (dEmail && dEmail === cleanIdent) return true;
-              if (cleanPhoneDigits && dPhone && dPhone === cleanPhoneDigits) return true;
+              if (cleanPhoneDigits && cleanPhoneDigits.length === 10 && dPhone && dPhone === cleanPhoneDigits) return true;
               if (dId && dId === cleanIdent) return true;
               return false;
             });
 
-            // If not found locally, query Supabase directly in real-time
-            if (!found) {
+            // If not found locally or password missing, query Supabase directly in real-time
+            if (!found || (!found.password && !found.pin)) {
               try {
-                const SUPABASE_URL = 'https://lwcuxohrnrkjyfmszxab.supabase.co';
-                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
-                let filter = cleanIdent.includes('@') ? `email=eq.${encodeURIComponent(cleanIdent)}` : (cleanPhoneDigits ? `phone=ilike.%${cleanPhoneDigits}` : '');
+                const db = window.DQSupabase || window.DQFirebase;
+                const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+                const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
+                
+                let filter = '';
+                if (cleanIdent.includes('@')) {
+                  filter = `or=(email.eq.${encodeURIComponent(cleanIdent)},identifier.eq.${encodeURIComponent(cleanIdent)})`;
+                } else if (cleanPhoneDigits && cleanPhoneDigits.length === 10) {
+                  filter = `or=(phone.ilike.%${cleanPhoneDigits},id.eq.${cleanPhoneDigits},identifier.ilike.%${cleanPhoneDigits})`;
+                } else {
+                  filter = `or=(id.eq.${encodeURIComponent(cleanIdent)},identifier.eq.${encodeURIComponent(cleanIdent)})`;
+                }
+
                 if (filter) {
                   const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/designers?${filter}&select=*`, {
                     headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
@@ -1410,13 +1420,17 @@
 
             if (authRes.ok && authData && authData.success && authData.user) {
               targetUser = authData.user;
-            } else {
-              // Server rejected credentials - STOP IMMEDIATELY (Do not send OTP, do not bypass)
+            } else if (authRes.status === 401) {
+              // Server specifically rejected credentials (401 Unauthorized) - STOP IMMEDIATELY
               btnLoginSubmit.disabled = false;
               btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
               if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
               setLoginAlert(authData?.message || 'Incorrect password or unregistered account. Please check your details.', 'error');
               return;
+            } else {
+              // Server endpoint returned 404 or 500 (e.g. static host without /api routes)
+              console.warn(`[AUTH] Backend auth returned status ${authRes.status}, switching to direct fallback auth...`);
+              targetUser = await performClientFallbackAuth(identifier, enteredPass);
             }
           } catch (netErr) {
             console.warn('Network error reaching auth endpoint, performing offline check:', netErr);
