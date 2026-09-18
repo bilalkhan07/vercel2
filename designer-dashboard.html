@@ -1494,6 +1494,10 @@
           return !deletedSet.has(normId) && !deletedSet.has(bareId) && !deletedSet.has(rawId.toUpperCase());
         });
 
+        if (window.DQSoundService && typeof window.DQSoundService.checkAndAlertNewJobs === 'function') {
+          window.DQSoundService.checkAndAlertNewJobs(liveJobs, 'Designer Workspace');
+        }
+
         const availableJobs = [];
         const myAcceptedJobs = [];
 
