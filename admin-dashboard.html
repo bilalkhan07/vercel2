@@ -2569,6 +2569,10 @@
           jobs = window.DQStore.deduplicateJobs(jobs);
         }
 
+        if (window.DQSoundService && typeof window.DQSoundService.checkAndAlertNewJobs === 'function') {
+          window.DQSoundService.checkAndAlertNewJobs(jobs, 'Admin Operations');
+        }
+
         let payoutMap = {};
         try { payoutMap = JSON.parse(localStorage.getItem('dq_payout_records') || '{}'); } catch(e) {}
 
