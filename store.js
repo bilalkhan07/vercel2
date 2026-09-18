@@ -1567,107 +1567,117 @@ const DQSoundService = {
 
   getAudioContext() {
     if (typeof window === 'undefined') return null;
-    if (!this.audioCtx) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioContextClass) {
-        this.audioCtx = new AudioContextClass();
+    try {
+      if (!this.audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          this.audioCtx = new AudioContextClass();
+        }
       }
+      return this.audioCtx;
+    } catch(e) {
+      return null;
     }
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
-    }
-    return this.audioCtx;
   },
 
-  unlockAudio() {
-    if (this.isUnlocked) return;
-    const ctx = this.getAudioContext();
-    if (ctx) {
-      if (ctx.state === 'suspended') {
-        ctx.resume().then(() => {
-          this.isUnlocked = true;
-        }).catch(() => {});
-      } else {
-        this.isUnlocked = true;
+  async unlockAudio() {
+    try {
+      const ctx = this.getAudioContext();
+      if (ctx && ctx.state === 'suspended') {
+        await ctx.resume();
       }
-    }
+      this.isUnlocked = true;
+    } catch(e) {}
   },
 
   /**
    * Plays a professional, rich harmonic notification chime lasting ~3.5 seconds
    */
-  playNewJobChime() {
+  async playNewJobChime() {
     if (typeof window === 'undefined') return;
+    console.log('[DQSoundService] 🔔 Playing 3.5s Notification Chime Alert...');
+    
     try {
-      const ctx = this.getAudioContext();
-      if (!ctx) return;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
+      // Create or get AudioContext
+      let ctx = this.getAudioContext();
+      if (!ctx || ctx.state === 'closed') {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          this.audioCtx = new AudioContextClass();
+          ctx = this.audioCtx;
+        }
       }
 
-      const now = ctx.currentTime;
-      
-      // Master filter for warm, rounded crystal tone (prevents harsh clicks)
-      const masterFilter = ctx.createBiquadFilter();
-      masterFilter.type = 'lowpass';
-      masterFilter.frequency.setValueAtTime(2600, now);
+      if (ctx && ctx.state === 'suspended') {
+        try {
+          await ctx.resume();
+        } catch(e) {}
+      }
 
-      const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.7, now);
-      masterFilter.connect(masterGain);
-      masterGain.connect(ctx.destination);
+      if (ctx) {
+        const now = ctx.currentTime;
+        
+        // Master filter for warm, rounded crystal tone (prevents harsh clicks)
+        const masterFilter = ctx.createBiquadFilter();
+        masterFilter.type = 'lowpass';
+        masterFilter.frequency.setValueAtTime(3200, now);
 
-      // Helper to synthesize a single resonant bell chime note
-      const playBellNote = (freq, startTime, duration = 0.8, volume = 0.25) => {
-        // Fundamental oscillator (Pure Sine)
-        const osc1 = ctx.createOscillator();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(freq, startTime);
+        const masterGain = ctx.createGain();
+        masterGain.gain.setValueAtTime(1.0, now);
+        masterFilter.connect(masterGain);
+        masterGain.connect(ctx.destination);
 
-        // Harmonic overtone (Soft Triangle for body/richness)
-        const osc2 = ctx.createOscillator();
-        osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(freq * 2, startTime); // 1 octave overtone
+        // Helper to synthesize a single resonant bell chime note
+        const playBellNote = (freq, startTime, duration = 0.8, volume = 0.45) => {
+          // Fundamental oscillator (Pure Sine)
+          const osc1 = ctx.createOscillator();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(freq, startTime);
 
-        // Amplitude Envelope (Fast attack, natural exponential decay)
-        const noteGain1 = ctx.createGain();
-        noteGain1.gain.setValueAtTime(0.0001, startTime);
-        noteGain1.gain.exponentialRampToValueAtTime(volume, startTime + 0.02);
-        noteGain1.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+          // Harmonic overtone (Soft Triangle for body/richness)
+          const osc2 = ctx.createOscillator();
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(freq * 2, startTime); // 1 octave overtone
 
-        const noteGain2 = ctx.createGain();
-        noteGain2.gain.setValueAtTime(0.0001, startTime);
-        noteGain2.gain.exponentialRampToValueAtTime(volume * 0.35, startTime + 0.015);
-        noteGain2.gain.exponentialRampToValueAtTime(0.0001, startTime + (duration * 0.6));
+          // Amplitude Envelope (Fast attack, natural exponential decay)
+          const noteGain1 = ctx.createGain();
+          noteGain1.gain.setValueAtTime(0.0001, startTime);
+          noteGain1.gain.exponentialRampToValueAtTime(volume, startTime + 0.02);
+          noteGain1.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
-        osc1.connect(noteGain1);
-        noteGain1.connect(masterFilter);
+          const noteGain2 = ctx.createGain();
+          noteGain2.gain.setValueAtTime(0.0001, startTime);
+          noteGain2.gain.exponentialRampToValueAtTime(volume * 0.4, startTime + 0.015);
+          noteGain2.gain.exponentialRampToValueAtTime(0.0001, startTime + (duration * 0.6));
 
-        osc2.connect(noteGain2);
-        noteGain2.connect(masterFilter);
+          osc1.connect(noteGain1);
+          noteGain1.connect(masterFilter);
 
-        osc1.start(startTime);
-        osc1.stop(startTime + duration);
-        osc2.start(startTime);
-        osc2.stop(startTime + duration);
-      };
+          osc2.connect(noteGain2);
+          noteGain2.connect(masterFilter);
 
-      // 3.5-SECOND MELODIC NOTIFICATION CHIME SEQUENCE
-      // Phrase 1: Ascending Attention Arpeggio (0.0s -> 1.2s)
-      playBellNote(523.25, now + 0.00, 0.70, 0.30); // C5
-      playBellNote(659.25, now + 0.28, 0.75, 0.35); // E5
-      playBellNote(783.99, now + 0.56, 0.85, 0.40); // G5
-      playBellNote(1046.50, now + 0.84, 1.10, 0.45); // C6
+          osc1.start(startTime);
+          osc1.stop(startTime + duration);
+          osc2.start(startTime);
+          osc2.stop(startTime + duration);
+        };
 
-      // Phrase 2: Bright Golden Chime Cadence with Sustained Decay (1.4s -> 3.6s)
-      playBellNote(659.25, now + 1.40, 0.70, 0.30); // E5
-      playBellNote(783.99, now + 1.68, 0.80, 0.35); // G5
-      playBellNote(1046.50, now + 1.96, 1.00, 0.45); // C6
-      playBellNote(1318.51, now + 2.24, 1.40, 0.55); // E6 (Sustained grand bell finish)
-      playBellNote(1567.98, now + 2.24, 1.20, 0.25); // G6 (Harmonic shimmer layer)
+        // 3.5-SECOND MELODIC NOTIFICATION CHIME SEQUENCE
+        // Phrase 1: Ascending Attention Arpeggio (0.0s -> 1.2s)
+        playBellNote(523.25, now + 0.00, 0.70, 0.50); // C5
+        playBellNote(659.25, now + 0.28, 0.75, 0.55); // E5
+        playBellNote(783.99, now + 0.56, 0.85, 0.60); // G5
+        playBellNote(1046.50, now + 0.84, 1.10, 0.65); // C6
 
+        // Phrase 2: Bright Golden Chime Cadence with Sustained Decay (1.4s -> 3.6s)
+        playBellNote(659.25, now + 1.40, 0.70, 0.50); // E5
+        playBellNote(783.99, now + 1.68, 0.80, 0.55); // G5
+        playBellNote(1046.50, now + 1.96, 1.00, 0.65); // C6
+        playBellNote(1318.51, now + 2.24, 1.40, 0.75); // E6 (Sustained grand bell finish)
+        playBellNote(1567.98, now + 2.24, 1.20, 0.35); // G6 (Harmonic shimmer layer)
+      }
     } catch (e) {
-      console.warn('[DQSoundService] Audio playback warning:', e);
+      console.warn('[DQSoundService] Web Audio playback warning:', e);
     }
   },
 
@@ -1843,3 +1853,4 @@ if (typeof window !== 'undefined') {
     }
   } catch(e) {}
 })();
+
