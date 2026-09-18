@@ -1061,7 +1061,7 @@
 
         // Redundant direct broadcast call removed because db.saveJob already handles broadcasting internally inside the database service layer
 
-        // Local storage backup
+        // Local storage backup & cross-tab sound alert
         try {
           const liveJobs = JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
           const filtered = (window.DQStore && window.DQStore.normalizeJobId)
@@ -1069,8 +1069,27 @@
             : liveJobs.filter(j => j.id !== jobId);
           filtered.unshift(newJobObj);
           localStorage.setItem('dq_live_jobs', JSON.stringify(filtered));
+          localStorage.setItem('dq_new_job_alert', JSON.stringify({
+            id: jobId,
+            project: clientName || serviceName,
+            price: servicePrice,
+            service: serviceName,
+            timestamp: Date.now()
+          }));
+          window.dispatchEvent(new CustomEvent('dq_jobs_updated', { detail: filtered }));
           if (window.DQStore && window.DQStore.saveJobs) {
             window.DQStore.saveJobs(filtered);
+          }
+
+          // Instant cross-tab BroadcastChannel dispatch for 0ms sound trigger in open Admin/Designer tabs
+          if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('dq_realtime_jobs');
+            bc.postMessage({ type: 'NEW_JOB', job: newJobObj });
+          }
+
+          // Play confirmation chime on request page
+          if (window.DQSoundService && typeof window.DQSoundService.playSingleTone === 'function') {
+            window.DQSoundService.playSingleTone();
           }
         } catch (err) {}
 
