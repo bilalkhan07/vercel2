@@ -1093,20 +1093,7 @@
             const bc = new BroadcastChannel('dq_realtime_jobs');
             bc.postMessage({ type: 'NEW_JOB', job: newJobObj });
           }
-
-          // Play 5x MP3 alert immediately on submission (user just clicked, audio is 100% unlocked)
-          try {
-            if (typeof window.playNewJobChime === 'function') {
-              window.playNewJobChime(5);
-            } else if (window.DQSoundService) {
-              window.DQSoundService.unlockAudio();
-              if (typeof window.DQSoundService.playNewJobChime === 'function') {
-                window.DQSoundService.playNewJobChime(5);
-              }
-            }
-          } catch(e) {
-            console.warn('Submission audio play error:', e);
-          }
+          // Note: Notification sound is strictly reserved for Designers and Admin workstations, NOT the client submitting the request.
         } catch (err) {}
 
         // Switch to Searching Screen
