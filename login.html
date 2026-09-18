@@ -56,6 +56,7 @@
       }
     </script>
     <script src="store.js"></script>
+    <script src="push-notifications.js"></script>
     <script type="module" src="/src/supabase-service.ts"></script>
     <script type="module" src="/src/firebase-auth-service.ts"></script>
     <script type="module" src="/src/agreement-service.ts"></script>
@@ -1366,13 +1367,10 @@
 
             if (found) {
               const dPass = (found.password || found.pin || found.accessPin || '').toString().trim();
-              const isPassOk = !dPass || 
-                dPass === cleanPass || 
-                dPass.toLowerCase() === cleanPass.toLowerCase() || 
-                cleanPass === '@Bilal@786' || 
-                cleanPass === 'Designer@123' || 
-                cleanPass === '7861' || 
-                cleanPass === '123456';
+              if (!dPass) {
+                return null;
+              }
+              const isPassOk = (dPass === cleanPass || dPass.toLowerCase() === cleanPass.toLowerCase());
 
               if (isPassOk) {
                 const targetEmail = (found.email || (found.identifier && found.identifier.includes('@') ? found.identifier : '') || (cleanIdent.includes('@') ? cleanIdent : '')).trim().toLowerCase();
@@ -1391,7 +1389,7 @@
             return null;
           }
 
-          // 1. SECURE BACKEND AUTHENTICATION (With real-time Supabase direct fallback)
+          // 1. SECURE BACKEND AUTHENTICATION (AUTHORITATIVE SERVER VALIDATION)
           let targetUser = null;
           try {
             let localDesignersBackup = null;
@@ -1408,33 +1406,28 @@
               body: JSON.stringify({ identifier, password: enteredPass, localBackup: localDesignersBackup })
             });
 
-            if (authRes.ok) {
-              const authData = await authRes.json();
-              if (authData && authData.success) {
-                targetUser = authData.user;
-              } else {
-                targetUser = await performClientFallbackAuth(identifier, enteredPass);
-                if (!targetUser) {
-                  btnLoginSubmit.disabled = false;
-                  btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-                  lucide.createIcons();
-                  setLoginAlert(authData?.message || 'Invalid credentials entered. Please verify your details and try again.', 'error');
-                  return;
-                }
-              }
+            const authData = await authRes.json().catch(() => ({}));
+
+            if (authRes.ok && authData && authData.success && authData.user) {
+              targetUser = authData.user;
             } else {
-              targetUser = await performClientFallbackAuth(identifier, enteredPass);
+              // Server rejected credentials - STOP IMMEDIATELY (Do not send OTP, do not bypass)
+              btnLoginSubmit.disabled = false;
+              btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
+              if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+              setLoginAlert(authData?.message || 'Incorrect password or unregistered account. Please check your details.', 'error');
+              return;
             }
           } catch (netErr) {
-            console.warn('Backend endpoint notice, falling back to direct Supabase / local verification:', netErr);
+            console.warn('Network error reaching auth endpoint, performing offline check:', netErr);
             targetUser = await performClientFallbackAuth(identifier, enteredPass);
           }
 
           if (!targetUser) {
             btnLoginSubmit.disabled = false;
             btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-            lucide.createIcons();
-            setLoginAlert('Invalid credentials or unregistered account. Please check your details or sign up.', 'error');
+            if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+            setLoginAlert('Incorrect password or unregistered account. Please check your credentials.', 'error');
             return;
           }
 

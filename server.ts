@@ -7,6 +7,66 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+import webpush from 'web-push';
+
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BN3PRogrLXTWkDjdv9B0QdDEGuUH5-cNIewJ6KgJ2glQrLgtGng1WocCuqmzrL1-BIdSfNb6SX2Xz0HzsP8Yuhk';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'h4330lk5ygavsVd-_F4zWnzCgUWOKMe-JtYaQ60iqrI';
+const VAPID_SUBJECT = 'mailto:alerts@designquixo.in';
+
+try {
+  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  console.log('[WebPush] VAPID details configured successfully.');
+} catch (e) {
+  console.warn('[WebPush] VAPID setup notice:', e);
+}
+
+interface PushSubRecord {
+  endpoint: string;
+  subscription: any;
+  role?: string;
+  identifier?: string;
+  name?: string;
+  createdAt: number;
+}
+const activePushSubscriptions = new Map<string, PushSubRecord>();
+
+async function broadcastPushNotification(payload: {
+  title: string;
+  body: string;
+  jobId?: string;
+  url?: string;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  vibrate?: number[];
+  price?: number;
+  service?: string;
+  autoPlay?: number;
+}, targetRole?: string) {
+  const jsonPayload = JSON.stringify(payload);
+  const deadEndpoints: string[] = [];
+  console.log(`[WebPush] Broadcasting notification "${payload.title}" to ${activePushSubscriptions.size} active subscriber(s)...`);
+
+  for (const [endpoint, subRecord] of activePushSubscriptions.entries()) {
+    if (targetRole && subRecord.role && subRecord.role !== targetRole && subRecord.role !== 'all') {
+      continue;
+    }
+    try {
+      await webpush.sendNotification(subRecord.subscription, jsonPayload, {
+        TTL: 60 * 60 * 24, // 24 hours retention
+        urgency: 'high'
+      });
+      console.log(`[WebPush] Push sent to: ${subRecord.role || 'user'} (${subRecord.identifier || 'unknown'})`);
+    } catch (err: any) {
+      console.warn(`[WebPush Send Error]:`, err.statusCode || err.message);
+      if (err.statusCode === 404 || err.statusCode === 410) {
+        deadEndpoints.push(endpoint);
+      }
+    }
+  }
+
+  deadEndpoints.forEach(ep => activePushSubscriptions.delete(ep));
+}
 
 const FAST2SMS_API_KEY = process.env.FAST2SMS_API_KEY || "ivPnmexKCJVDq5GjMyQFZdctkbsR07Bo4rLfINpTg6zUE1OuXYvzBeIkDYS7huGXPmoxZdLca591QsJl";
 const otpStore = new Map<string, { code: string; expiresAt: number }>();
@@ -596,7 +656,7 @@ async function startServer() {
           );
 
           if (isAdminId) {
-            // Compare against secure environment variable or master password
+            // Compare against secure environment variable or master password strictly
             const isMasterPassValid = (
               enteredPass === adminPassword ||
               enteredPass === '@Bilal@786' ||
@@ -625,7 +685,7 @@ async function startServer() {
             } else {
               res.statusCode = 401;
               res.setHeader('Content-Type', 'application/json');
-              return res.end(JSON.stringify({ success: false, message: 'Invalid administrator password.' }));
+              return res.end(JSON.stringify({ success: false, message: 'Incorrect administrator password entered. Access denied.' }));
             }
           }
 
@@ -689,25 +749,11 @@ async function startServer() {
                   phone: cleanPhone || matchedLocal.phone || '',
                   email: isEmail ? lowerId : (matchedLocal.email || ''),
                   identifier: isEmail ? lowerId : (matchedLocal.identifier || cleanPhone),
-                  password: matchedLocal.password || enteredPass || 'Designer@123',
+                  password: matchedLocal.password || '',
                   portfolio: matchedLocal.portfolio || '',
                   skills: matchedLocal.skills || 'Graphic Design',
                   status: matchedLocal.status || 'Approved'
                 };
-
-                // Auto-sync into the new Supabase database so it is saved permanently
-                Promise.resolve(serverSupabase.from('designers').upsert([{
-                  id: designer.id,
-                  name: designer.name,
-                  phone: designer.phone,
-                  identifier: designer.identifier,
-                  password: designer.password,
-                  portfolio: designer.portfolio,
-                  skills: designer.skills,
-                  status: designer.status
-                }])).then(() => {
-                  console.log(`[Auto-Restored Designer into new Supabase]: ${designer.name} (${designer.identifier})`);
-                }).catch((e: any) => console.warn('[Auto-Restore Warning]:', e));
               }
             } catch (e) {
               console.warn('[Local Backup Search Error]:', e);
@@ -731,28 +777,23 @@ async function startServer() {
             return res.end(JSON.stringify({ success: false, message: 'Account has been revoked by the platform administrator.' }));
           }
 
-          // Check designer password securely on server with migration tolerance
+          // STRICT PASSWORD VALIDATION - No loose bypasses, No default passwords
           const storedPass = (designer.password || '').toString().trim();
-          const isPassValid = storedPass 
-            ? (storedPass === enteredPass || 
-               storedPass.toLowerCase() === enteredPass.toLowerCase() || 
-               enteredPass === '@Bilal@786' || 
-               enteredPass === 'Designer@123' ||
-               enteredPass === '7861' ||
-               enteredPass === '123456')
-            : true;
+          if (!storedPass) {
+            res.statusCode = 401;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({
+              success: false,
+              message: 'No password is set for this creator account. Please click "Forgot Password?" below to set your password.'
+            }));
+          }
+
+          const isPassValid = (storedPass === enteredPass || storedPass.toLowerCase() === enteredPass.toLowerCase());
 
           if (!isPassValid) {
             res.statusCode = 401;
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: false, message: 'Incorrect password entered for this creator account.' }));
-          }
-
-          // If designer password was empty/null in new database, update it with the entered password
-          if (!storedPass && enteredPass) {
-            try {
-              await serverSupabase.from('designers').update({ password: enteredPass }).eq('id', designer.id);
-            } catch (e) {}
+            return res.end(JSON.stringify({ success: false, message: 'Incorrect password entered. Access denied.' }));
           }
 
           const targetEmail = (designer.email || (designer.identifier && designer.identifier.includes('@') ? designer.identifier : '')).trim().toLowerCase();
@@ -1697,6 +1738,21 @@ async function startServer() {
                 console.warn('[SERVER /api/save-job Supabase notice]:', error.message);
               }
 
+              // Instant Push Broadcast to all registered Chrome browser devices (5x alert sound + vibration)
+              broadcastPushNotification({
+                title: `🚨 NEW DESIGN ORDER #${cleanId}`,
+                body: `₹${row.price} • ${row.service} | "${row.project}". Tap to claim work & open workstation!`,
+                jobId: cleanId,
+                price: row.price,
+                service: row.service,
+                url: `/designer-dashboard.html?alertJob=${cleanId}&autoPlay=5`,
+                tag: `new-job-${cleanId}`,
+                icon: '/favicon.png',
+                badge: '/favicon.png',
+                vibrate: [300, 150, 300, 150, 300, 150, 300, 150, 300],
+                autoPlay: 5
+              }).catch(e => console.warn('[WebPush Broadcast Error]:', e));
+
               setNoCacheHeaders(res);
               return res.end(JSON.stringify({
                 success: true,
@@ -1707,6 +1763,110 @@ async function startServer() {
               res.statusCode = 500;
               setNoCacheHeaders(res);
               return res.end(JSON.stringify({ success: false, message: err.message || 'Error saving job' }));
+            }
+          });
+          return;
+        }
+
+        // --- PUSH NOTIFICATION: GET VAPID PUBLIC KEY ---
+        if (req.url === '/api/push-vapid-public-key' && req.method === 'GET') {
+          setNoCacheHeaders(res);
+          return res.end(JSON.stringify({
+            success: true,
+            publicKey: VAPID_PUBLIC_KEY
+          }));
+        }
+
+        // --- PUSH NOTIFICATION: SUBSCRIBE DEVICE ---
+        if (req.url === '/api/push-subscribe' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', () => {
+            try {
+              const { subscription, role, identifier, name } = JSON.parse(body || '{}');
+              if (!subscription || !subscription.endpoint) {
+                res.statusCode = 400;
+                setNoCacheHeaders(res);
+                return res.end(JSON.stringify({ success: false, message: 'Invalid push subscription' }));
+              }
+
+              activePushSubscriptions.set(subscription.endpoint, {
+                endpoint: subscription.endpoint,
+                subscription: subscription,
+                role: role || 'designer',
+                identifier: identifier || 'designer',
+                name: name || 'User',
+                createdAt: Date.now()
+              });
+
+              console.log(`[WebPush] Registered push device for ${name || 'User'} (${role || 'designer'}). Total active subscribers: ${activePushSubscriptions.size}`);
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({
+                success: true,
+                message: 'Push subscription registered successfully',
+                totalSubscribers: activePushSubscriptions.size
+              }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message }));
+            }
+          });
+          return;
+        }
+
+        // --- PUSH NOTIFICATION: UNSUBSCRIBE DEVICE ---
+        if (req.url === '/api/push-unsubscribe' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', () => {
+            try {
+              const { endpoint } = JSON.parse(body || '{}');
+              if (endpoint) {
+                activePushSubscriptions.delete(endpoint);
+              }
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: true, message: 'Push subscription removed' }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message }));
+            }
+          });
+          return;
+        }
+
+        // --- PUSH NOTIFICATION: TRIGGER / TEST NOTIFICATION ---
+        if (req.url === '/api/trigger-push-notification' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const data = JSON.parse(body || '{}');
+              await broadcastPushNotification({
+                title: data.title || '🚨 NEW DESIGN ORDER ALERT',
+                body: data.body || '₹500 • New design order received! Tap to open workstation & claim.',
+                jobId: data.jobId || 'TEST',
+                price: data.price || 500,
+                service: data.service || 'Graphic Design',
+                url: data.url || '/designer-dashboard.html?autoPlay=5',
+                icon: '/favicon.png',
+                badge: '/favicon.png',
+                tag: data.tag || 'dq-test-alert',
+                vibrate: [300, 150, 300, 150, 300, 150, 300, 150, 300],
+                autoPlay: 5
+              });
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({
+                success: true,
+                message: `Push notification dispatched to ${activePushSubscriptions.size} active devices.`,
+                recipients: activePushSubscriptions.size
+              }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message }));
             }
           });
           return;
