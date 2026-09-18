@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="security.js"></script>
+    <script src="notification-sound.js"></script>
     <script src="store.js"></script>
     <script>
       (function(){
@@ -115,10 +116,10 @@
       <!-- Top Right Status & Profile Pill -->
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <!-- Test Sound Button -->
-        <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(); if(typeof showToast==='function') showToast('🔔 Playing 3.5s Chime...'); }" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs" title="Test 3.5s Notification Chime">
+        <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing your MP3 5 times...'); }" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs" title="Test 5x MP3 Notification Sound">
           <i data-lucide="volume-2" class="w-3.5 h-3.5 text-emerald-600"></i>
-          <span class="hidden sm:inline">🔔 Test Sound (3.5s)</span>
-          <span class="sm:hidden">Test</span>
+          <span class="hidden sm:inline">🔊 Test MP3 Sound (5x)</span>
+          <span class="sm:hidden">Test (5x)</span>
         </button>
 
         <!-- Live Status Indicator -->
@@ -374,9 +375,9 @@
               </div>
 
               <div class="flex items-center gap-2 flex-wrap">
-                <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(); }" class="p-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs" title="Test 3-4s New Job Notification Sound">
+                <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing your MP3 5 times...'); }" class="p-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs" title="Test 5x MP3 Notification Sound">
                   <i data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
-                  <span>Test Alert Sound (3.5s)</span>
+                  <span>Test MP3 Sound (5x)</span>
                 </button>
                 <button id="refresh-jobs-btn" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors">
                   <i data-lucide="refresh-cw" class="w-4 h-4"></i>
