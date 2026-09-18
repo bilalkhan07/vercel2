@@ -482,20 +482,31 @@ export const DQSupabase = {
       if (isNew) {
         let extraEmails: string[] = [];
         let extraDesigners: any[] = [];
+        let deletedList: string[] = [];
         try {
-          const d1 = JSON.parse(safeStorage.getItem('dq_registered_designers') || '[]');
-          const d2 = JSON.parse(safeStorage.getItem('dq_designers') || '[]');
-          const d3 = JSON.parse(safeStorage.getItem('dq_approved_designers') || '[]');
+          deletedList = JSON.parse(safeStorage.getItem('dq_deleted_designers') || '[]');
+          const deletedSet = new Set(deletedList.map(s => (s || '').toString().trim().toLowerCase()));
+
+          const d1 = JSON.parse(safeStorage.getItem('dq_approved_designers') || '[]');
+          const d2 = JSON.parse(safeStorage.getItem('dq_registered_designers') || '[]');
           const combined = [
             ...(Array.isArray(d1) ? d1 : []),
-            ...(Array.isArray(d2) ? d2 : []),
-            ...(Array.isArray(d3) ? d3 : [])
-          ];
+            ...(Array.isArray(d2) ? d2 : [])
+          ].filter(d => {
+            if (!d) return false;
+            const em = (d.email || d.identifier || '').toString().trim().toLowerCase();
+            const ph = (d.phone || d.identifier || '').toString().replace(/\D/g, '').slice(-10);
+            if (em && deletedSet.has(em)) return false;
+            if (ph && deletedSet.has(ph)) return false;
+            if (d.status && d.status !== 'Approved') return false;
+            return true;
+          });
+
           extraDesigners = combined;
           combined.forEach((d: any) => {
             const em = (d.email || d.identifier || '').toString().trim().toLowerCase();
             if (em && em.includes('@') && em.includes('.')) {
-              if (!extraEmails.includes(em)) {
+              if (!deletedSet.has(em) && !extraEmails.includes(em)) {
                 extraEmails.push(em);
               }
             }
@@ -508,7 +519,8 @@ export const DQSupabase = {
           body: JSON.stringify({
             job: normalizedJob,
             extraEmails,
-            extraDesigners
+            extraDesigners,
+            deletedDesigners: deletedList
           })
         }).catch(err => console.warn('Job broadcast fetch notice:', err));
       }
