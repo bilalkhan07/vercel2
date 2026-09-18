@@ -78,7 +78,7 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { job, designers, extraEmails, extraDesigners } = body;
+    const { job, designers, extraEmails, extraDesigners, deletedDesigners } = body;
 
     if (!job) {
       return res.status(400).json({ success: false, message: 'Missing job payload' });
@@ -94,10 +94,21 @@ export default async function handler(req, res) {
     const brief = job.brief || job.description || 'Custom design requirement';
     const formattedTime = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
 
+    // Set of deleted designer emails & phones
+    const deletedSet = new Set();
+    if (Array.isArray(deletedDesigners)) {
+      deletedDesigners.forEach(d => {
+        const cd = (d || '').toString().trim().toLowerCase();
+        if (cd) deletedSet.add(cd);
+        const cp = cd.replace(/\D/g, '').slice(-10);
+        if (cp && cp.length === 10) deletedSet.add(cp);
+      });
+    }
+
     // Build recipient list
     const recipientMap = new Map();
 
-    // 1. Designers from payload
+    // 1. Designers from payload (only Approved, non-deleted)
     const rawList = [
       ...(Array.isArray(designers) ? designers : []),
       ...(Array.isArray(extraDesigners) ? extraDesigners : [])
@@ -105,6 +116,11 @@ export default async function handler(req, res) {
     rawList.forEach(d => {
       if (!d) return;
       const em = (d.email || d.identifier || '').toString().trim().toLowerCase();
+      const ph = (d.phone || d.identifier || '').toString().replace(/\D/g, '').slice(-10);
+      const status = (d.status || '').toString().trim();
+      if (status && status !== 'Approved') return;
+      if (em && deletedSet.has(em)) return;
+      if (ph && deletedSet.has(ph)) return;
       if (em && em.includes('@') && em.includes('.')) {
         recipientMap.set(em, d.name || 'Designer');
       }
@@ -115,16 +131,16 @@ export default async function handler(req, res) {
       extraEmails.forEach(em => {
         const clean = (em || '').toString().trim().toLowerCase();
         if (clean && clean.includes('@') && clean.includes('.')) {
-          if (!recipientMap.has(clean)) {
+          if (!deletedSet.has(clean) && !recipientMap.has(clean)) {
             recipientMap.set(clean, 'Designer');
           }
         }
       });
     }
 
-    // 3. Fetch registered designers from Supabase
+    // 3. Fetch ONLY active Approved designers from Supabase
     try {
-      const sbResp = await fetch(`${SUPABASE_URL}/rest/v1/designers?select=*`, {
+      const sbResp = await fetch(`${SUPABASE_URL}/rest/v1/designers?status=eq.Approved&select=*`, {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -135,6 +151,9 @@ export default async function handler(req, res) {
         if (Array.isArray(dbDesigners)) {
           dbDesigners.forEach(d => {
             const em = (d.email || d.identifier || '').toString().trim().toLowerCase();
+            const ph = (d.phone || d.identifier || '').toString().replace(/\D/g, '').slice(-10);
+            if (em && deletedSet.has(em)) return;
+            if (ph && deletedSet.has(ph)) return;
             if (em && em.includes('@') && em.includes('.')) {
               if (!recipientMap.has(em)) {
                 recipientMap.set(em, d.name || 'Designer');
