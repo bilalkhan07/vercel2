@@ -129,90 +129,100 @@
 
     const ctx = this.getAudioContext();
     if (ctx && ctx.state === "suspended") {
-      try { ctx.resume(); } catch(e) {}
+      try { await ctx.resume(); } catch(e) {}
     }
 
     if (!this._decodedBuffer) {
       this.preDecodeAudio();
     }
 
-    // STRATEGY 1: Web Audio BufferSource hardware-clock scheduling (Best quality, 0 latency, immune to background tab throttle)
+    let playedSuccessfully = false;
+
+    // STRATEGY 1: Hardware-clock Web Audio Synthesizer (Instant, 0 network dependency, immune to tab throttle)
+    if (ctx && ctx.state === "running") {
+      try {
+        console.log("[DQSoundService] 🎵 Scheduling " + repeatCount + "x synthesized alert chimes via Web Audio hardware clock!");
+        const start = ctx.currentTime;
+        for (let i = 0; i < repeatCount; i++) {
+          const burstStart = start + (i * 0.65);
+          // 3-note ascending chime: C6 (1046.5Hz) -> E6 (1318.5Hz) -> G6 (1567.98Hz)
+          const freqs = [1046.5, 1318.5, 1567.98];
+          freqs.forEach((f, idx) => {
+            const noteStart = burstStart + (idx * 0.08);
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(f, noteStart);
+            gain.gain.setValueAtTime(0.0001, noteStart);
+            gain.gain.exponentialRampToValueAtTime(0.7, noteStart + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(noteStart);
+            osc.stop(noteStart + 0.36);
+          });
+        }
+        playedSuccessfully = true;
+      } catch(synthErr) {
+        console.warn("[DQSoundService] Synth chime warning:", synthErr);
+      }
+    }
+
+    // STRATEGY 2: If decoded MP3 buffer is available, schedule MP3 bursts via Web Audio
     if (ctx && ctx.state === "running" && this._decodedBuffer) {
       try {
-        console.log("[DQSoundService] 🎵 Scheduling " + repeatCount + "x MP3 bursts via Web Audio hardware clock!");
+        console.log("[DQSoundService] 🎵 Scheduling " + repeatCount + "x MP3 bursts via Web Audio buffer!");
         const start = ctx.currentTime;
         for (let i = 0; i < repeatCount; i++) {
           const src = ctx.createBufferSource();
           src.buffer = this._decodedBuffer;
           const gain = ctx.createGain();
-          gain.gain.value = 1.0;
+          gain.gain.value = 0.9;
           src.connect(gain);
           gain.connect(ctx.destination);
           src.start(start + (i * 0.65));
         }
-        this.clearPendingAlerts();
-        return true;
-      } catch(err) {
-        console.warn("[DQSoundService] Web Audio buffer error:", err);
+        playedSuccessfully = true;
+      } catch(bufErr) {
+        console.warn("[DQSoundService] MP3 BufferSource warning:", bufErr);
       }
     }
 
-    // STRATEGY 2: HTML5 Audio fallback
-    try {
-      console.log("[DQSoundService] 🎵 Playing " + repeatCount + "x MP3 via HTML5 Audio!");
-      for (let i = 0; i < repeatCount; i++) {
-        setTimeout(() => {
-          try {
-            const audio = new Audio("/notification.mp3");
-            audio.volume = 1.0;
-            const p = audio.play();
-            if (p !== undefined) {
-              p.then(() => {
-                this.clearPendingAlerts();
-              }).catch((err) => {
-                console.warn("[DQSoundService] HTML5 Audio autoplay blocked:", err?.name);
-                this.pendingChime = true;
-                this.pendingRepeatCount = repeatCount;
-                this.showAutoplayUnlockBanner();
-              });
-            }
-          } catch(e) {}
-        }, i * 650);
-      }
-      return true;
-    } catch(e) {}
-
-    // STRATEGY 3: Harmonic Synthesizer Chimes
-    try {
-      if (ctx && ctx.state === "running") {
+    // STRATEGY 3: HTML5 Audio fallback (in case Web Audio context wasn't running)
+    if (!playedSuccessfully) {
+      try {
+        console.log("[DQSoundService] 🎵 Playing " + repeatCount + "x MP3 via HTML5 Audio fallback!");
         for (let i = 0; i < repeatCount; i++) {
           setTimeout(() => {
             try {
-              const now = ctx.currentTime;
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = "sine";
-              osc.frequency.setValueAtTime(1046.5, now);
-              osc.frequency.exponentialRampToValueAtTime(1567.98, now + 0.08);
-              osc.frequency.exponentialRampToValueAtTime(2093.00, now + 0.28);
-              gain.gain.setValueAtTime(0.0001, now);
-              gain.gain.exponentialRampToValueAtTime(0.8, now + 0.04);
-              gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start(now);
-              osc.stop(now + 0.46);
+              const audio = new Audio("/notification.mp3");
+              audio.volume = 1.0;
+              const p = audio.play();
+              if (p !== undefined) {
+                p.then(() => {
+                  this.clearPendingAlerts();
+                }).catch((err) => {
+                  console.warn("[DQSoundService] HTML5 Audio autoplay blocked:", err?.name);
+                  this.pendingChime = true;
+                  this.pendingRepeatCount = repeatCount;
+                  this.showAutoplayUnlockBanner();
+                });
+              }
             } catch(e) {}
-          }, i * 500);
+          }, i * 650);
         }
-        return true;
-      }
-    } catch(e) {}
+      } catch(html5Err) {}
+    }
 
-    this.pendingChime = true;
-    this.pendingRepeatCount = repeatCount;
-    this.showAutoplayUnlockBanner();
-    return false;
+    if (playedSuccessfully) {
+      this.clearPendingAlerts();
+      return true;
+    } else {
+      this.pendingChime = true;
+      this.pendingRepeatCount = repeatCount;
+      this.showAutoplayUnlockBanner();
+      return false;
+    }
   };
 
   service.playSingleTone = function() {
@@ -471,8 +481,12 @@
   };
 
   service.preDecodeAudio();
+  const unlockListener = () => {
+    service.unlockAudio();
+  };
   ["click", "pointerdown", "touchstart", "keydown"].forEach(evt => {
-    window.addEventListener(evt, () => service.unlockAudio(), { passive: true, once: true });
+    window.addEventListener(evt, unlockListener, { passive: true });
+    document.addEventListener(evt, unlockListener, { passive: true });
   });
 })();
 
@@ -502,4 +516,3 @@
     }
   } catch(e) {}
 })();
-
