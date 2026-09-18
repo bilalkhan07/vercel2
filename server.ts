@@ -15,6 +15,7 @@ const emailOtpStore = new Map<string, { code: string; expiresAt: number }>();
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://lwcuxohrnrkjyfmszxab.supabase.co";
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo";
 const serverDeletedJobIds = new Set<string>();
+const serverDeletedDesignerSet = new Set<string>();
 const serverSupabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Memory caches to eliminate 95%+ of Supabase DB Egress Bandwidth
@@ -588,7 +589,10 @@ async function startServer() {
             lowerId === 'admin@designquixo.in' ||
             lowerId === 'designquixo@gmail.com' ||
             lowerId === 'admin@designquixo.com' ||
-            lowerId === 'alerts@designquixo.in'
+            lowerId === 'alerts@designquixo.in' ||
+            lowerId === 'mustafazthings@gmail.com' ||
+            lowerId.replace(/\D/g, '').endsWith('8602420897') ||
+            lowerId === '8602420897'
           );
 
           if (isAdminId) {
@@ -596,6 +600,7 @@ async function startServer() {
             const isMasterPassValid = (
               enteredPass === adminPassword ||
               enteredPass === '@Bilal@786' ||
+              enteredPass === 'Bilal#0897' ||
               enteredPass === '@Bilal@777' ||
               enteredPass === '@Bilal@8602420897@7'
             );
@@ -623,6 +628,13 @@ async function startServer() {
           // 2. Designer Lookup from Database (Password checked securely on server)
           const cleanPhone = lowerId.replace(/\D/g, '').slice(-10);
           const isEmail = lowerId.includes('@');
+
+          // Check if designer was marked as deleted
+          if (serverDeletedDesignerSet.has(lowerId) || (cleanPhone && serverDeletedDesignerSet.has(cleanPhone))) {
+            res.statusCode = 403;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ success: false, message: 'This designer account has been deleted by the administrator.' }));
+          }
 
           let designer: any = null;
           try {
@@ -749,7 +761,8 @@ async function startServer() {
               name: designer.name || 'Verified Designer',
               identifier: targetEmail || designer.phone || cleanPhone,
               phone: designer.phone || cleanPhone,
-              email: targetEmail || 'designquixo@gmail.com',
+              email: targetEmail || '',
+              status: designer.status || 'Approved',
               displayLabel: targetEmail ? `${targetEmail.slice(0, 2)}***@${targetEmail.split('@')[1]}` : `+91 ${cleanPhone}`,
               designerData: {
                 id: designer.id,
@@ -758,7 +771,7 @@ async function startServer() {
                 email: targetEmail,
                 portfolio: designer.portfolio,
                 skills: designer.skills,
-                status: designer.status
+                status: designer.status || 'Approved'
               }
             }
           }));
@@ -778,7 +791,7 @@ async function startServer() {
           req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
           req.on('end', async () => {
             try {
-              const { job, designers, extraEmails, extraDesigners } = JSON.parse(body || '{}');
+              const { job, designers, extraEmails, extraDesigners, deletedDesigners } = JSON.parse(body || '{}');
               if (!job) {
                 res.statusCode = 400;
                 res.setHeader('Content-Type', 'application/json');
@@ -787,10 +800,20 @@ async function startServer() {
 
               console.log('[BROADCAST NEW JOB] Starting email dispatch for job:', job.id || job.project);
 
+              // 0. Process any deleted designers list to ensure they are blacklisted from emails
+              if (Array.isArray(deletedDesigners)) {
+                deletedDesigners.forEach((d: string) => {
+                  const cd = (d || '').toString().trim().toLowerCase();
+                  if (cd) serverDeletedDesignerSet.add(cd);
+                  const cp = cd.replace(/\D/g, '').slice(-10);
+                  if (cp && cp.length === 10) serverDeletedDesignerSet.add(cp);
+                });
+              }
+
               // 1. Recipient Map: email -> name
               const recipientMap = new Map<string, string>();
 
-              // 1a. Process any designers passed directly in payload from client
+              // 1a. Process any designers passed directly in payload from client (strictly filtering out deleted and unapproved)
               const rawDesignerList = [
                 ...(Array.isArray(designers) ? designers : []),
                 ...(Array.isArray(extraDesigners) ? extraDesigners : [])
@@ -799,40 +822,32 @@ async function startServer() {
               rawDesignerList.forEach((d: any) => {
                 if (!d) return;
                 const em = ((d.email || d.identifier || '')).toString().trim().toLowerCase();
+                const ph = ((d.phone || d.identifier || '')).toString().replace(/\D/g, '').slice(-10);
+                const status = (d.status || '').toString().trim();
+                if (status && status !== 'Approved') return; // Only send to Approved
+                if (em && serverDeletedDesignerSet.has(em)) return; // Never send to deleted
+                if (ph && serverDeletedDesignerSet.has(ph)) return; // Never send to deleted
                 if (em && em.includes('@') && em.includes('.')) {
                   recipientMap.set(em, d.name || 'Designer');
                 }
               });
 
-              // 1b. Fetch all registered/approved designers from Supabase
+              // 1b. Fetch ONLY active Approved designers from Supabase (NEVER query login_history for recipients)
               try {
                 const { data: dbDesigners, error } = await serverSupabase
                   .from('designers')
-                  .select('*');
+                  .select('*')
+                  .eq('status', 'Approved');
 
                 if (dbDesigners && Array.isArray(dbDesigners)) {
                   dbDesigners.forEach((d: any) => {
                     const em = ((d.email || d.identifier || '')).toString().trim().toLowerCase();
+                    const ph = ((d.phone || d.identifier || '')).toString().replace(/\D/g, '').slice(-10);
+                    if (em && serverDeletedDesignerSet.has(em)) return;
+                    if (ph && serverDeletedDesignerSet.has(ph)) return;
                     if (em && em.includes('@') && em.includes('.')) {
                       if (!recipientMap.has(em)) {
                         recipientMap.set(em, d.name || 'Designer');
-                      }
-                    }
-                  });
-                }
-
-                // Also check login_history for any signed designers who had emails recorded
-                const { data: logDesigners } = await serverSupabase
-                  .from('login_history')
-                  .select('phone, name, status')
-                  .or('role.eq.designer,role.eq.signed_agreement');
-
-                if (logDesigners && Array.isArray(logDesigners)) {
-                  logDesigners.forEach((l: any) => {
-                    const candidate = (l.phone || '').toString().trim().toLowerCase();
-                    if (candidate.includes('@') && candidate.includes('.')) {
-                      if (!recipientMap.has(candidate)) {
-                        recipientMap.set(candidate, l.name || 'Designer');
                       }
                     }
                   });
@@ -841,12 +856,12 @@ async function startServer() {
                 console.warn('[BROADCAST NEW JOB] Supabase designers fetch notice:', e);
               }
 
-              // 1c. Add any extra raw emails passed from client
+              // 1c. Add any extra raw emails passed from client if not blacklisted
               if (Array.isArray(extraEmails)) {
                 extraEmails.forEach((em: string) => {
                   const clean = (em || '').toString().trim().toLowerCase();
                   if (clean && clean.includes('@') && clean.includes('.')) {
-                    if (!recipientMap.has(clean)) {
+                    if (!serverDeletedDesignerSet.has(clean) && !recipientMap.has(clean)) {
                       recipientMap.set(clean, 'Designer');
                     }
                   }
@@ -859,8 +874,15 @@ async function startServer() {
                 recipientMap.set(adminEmail, 'Design Quixo Admin');
               }
 
+              // 1e. Final safety check: remove any recipient in blacklist
+              for (const [em] of recipientMap.entries()) {
+                if (serverDeletedDesignerSet.has(em)) {
+                  recipientMap.delete(em);
+                }
+              }
+
               const recipients = Array.from(recipientMap.entries());
-              console.log(`[BROADCAST NEW JOB] Found ${recipients.length} designer/admin recipient(s):`, recipients);
+              console.log(`[BROADCAST NEW JOB] Discarded deleted designers. Found ${recipients.length} valid recipient(s):`, recipients);
 
               // 2. Dispatch emails in parallel
               let successCount = 0;
@@ -1429,7 +1451,17 @@ async function startServer() {
               console.warn('[SERVER /api/get-designers notice]:', error.message);
             }
 
-            const designersList = Array.isArray(data) ? data : [];
+            const rawDesignersList = Array.isArray(data) ? data : [];
+            const designersList = rawDesignersList.filter(d => {
+              if (!d) return false;
+              const em = (d.email || d.identifier || '').toString().trim().toLowerCase();
+              const ph = (d.phone || d.identifier || '').toString().replace(/\D/g, '').slice(-10);
+              const id = (d.id || '').toString().trim().toLowerCase();
+              if (em && serverDeletedDesignerSet.has(em)) return false;
+              if (ph && serverDeletedDesignerSet.has(ph)) return false;
+              if (id && serverDeletedDesignerSet.has(id)) return false;
+              return true;
+            });
             cachedDesignersData = designersList;
             cachedDesignersTime = Date.now();
 
@@ -1443,6 +1475,82 @@ async function startServer() {
             setNoCacheHeaders(res);
             return res.end(JSON.stringify({ success: false, designers: [], message: err.message }));
           }
+        }
+
+        // --- DELETE DESIGNER API ROUTE (PERMANENT CACHE-FREE DELETION FROM ALL TABLES) ---
+        if (req.url === '/api/delete-designer' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const { id, email, phone } = JSON.parse(body || '{}');
+              const cleanEmail = (email || '').toString().trim().toLowerCase();
+              const cleanPhone = (phone || '').toString().replace(/\D/g, '').slice(-10);
+              const rawId = (id || '').toString().trim();
+
+              console.log(`[SERVER /api/delete-designer] Permanently deleting designer: ${cleanEmail || cleanPhone || rawId}`);
+
+              // 1. Add to server deletion memory blacklist immediately
+              if (cleanEmail) serverDeletedDesignerSet.add(cleanEmail);
+              if (cleanPhone) serverDeletedDesignerSet.add(cleanPhone);
+              if (rawId) {
+                serverDeletedDesignerSet.add(rawId);
+                serverDeletedDesignerSet.add(rawId.toLowerCase());
+              }
+
+              // 2. Invalidate cached designers memory
+              cachedDesignersData = null;
+
+              // 3. Delete from Supabase 'designers' table across all matching keys
+              const delTasks: Promise<any>[] = [];
+              if (cleanEmail) {
+                delTasks.push(
+                  Promise.resolve(serverSupabase.from('designers').delete().eq('email', cleanEmail)),
+                  Promise.resolve(serverSupabase.from('designers').delete().eq('identifier', cleanEmail)),
+                  Promise.resolve(serverSupabase.from('designers').delete().eq('id', cleanEmail))
+                );
+              }
+              if (cleanPhone) {
+                delTasks.push(
+                  Promise.resolve(serverSupabase.from('designers').delete().eq('phone', cleanPhone)),
+                  Promise.resolve(serverSupabase.from('designers').delete().eq('identifier', cleanPhone)),
+                  Promise.resolve(serverSupabase.from('designers').delete().eq('id', cleanPhone))
+                );
+              }
+              if (rawId && rawId !== cleanEmail && rawId !== cleanPhone) {
+                delTasks.push(
+                  Promise.resolve(serverSupabase.from('designers').delete().eq('id', rawId))
+                );
+              }
+
+              // 4. Delete from Supabase 'login_history' so old records never resurrect this designer or send job emails
+              if (cleanEmail) {
+                delTasks.push(
+                  Promise.resolve(serverSupabase.from('login_history').delete().eq('phone', cleanEmail)),
+                  Promise.resolve(serverSupabase.from('login_history').delete().eq('id', cleanEmail))
+                );
+              }
+              if (cleanPhone) {
+                delTasks.push(
+                  Promise.resolve(serverSupabase.from('login_history').delete().eq('phone', cleanPhone)),
+                  Promise.resolve(serverSupabase.from('login_history').delete().eq('id', cleanPhone))
+                );
+              }
+
+              await Promise.allSettled(delTasks);
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({
+                success: true,
+                message: `Designer permanently removed from all database tables and blacklist registered.`
+              }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message || 'Error deleting designer' }));
+            }
+          });
+          return;
         }
 
         // --- DELETE JOB API ROUTE (PERMANENT CACHE-FREE DELETION) ---
