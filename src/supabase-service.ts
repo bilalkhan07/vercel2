@@ -386,13 +386,30 @@ export const DQSupabase = {
       image: refImg
     };
 
-    // 1. Instant local persistence (0ms latency perception)
+    // 1. Instant local persistence (0ms latency perception) & sound broadcast
     try {
       const localJobs = JSON.parse(safeStorage.getItem('dq_live_jobs') || '[]');
       const filtered = localJobs.filter((j: any) => normalizeJobId(j.id) !== cleanId);
       filtered.unshift(normalizedJob);
       safeStorage.setItem('dq_live_jobs', JSON.stringify(filtered));
+      safeStorage.setItem('dq_new_job_alert', JSON.stringify({
+        id: cleanId,
+        project: normalizedJob.project,
+        price: normalizedJob.price,
+        service: normalizedJob.service,
+        timestamp: Date.now()
+      }));
       safeDispatch('dq_jobs_updated', filtered);
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('dq_realtime_jobs');
+          bc.postMessage({ type: 'NEW_JOB', job: normalizedJob });
+        }
+      } catch(e) {}
+      if (typeof window !== 'undefined' && (window as any).DQSoundService) {
+        (window as any).DQSoundService.playNewJobChime(5);
+        (window as any).DQSoundService.showNewJobBanner(normalizedJob, 'New Job Uploaded');
+      }
     } catch (e) {}
 
     // 2. Prepare exact lowercase payload to match PostgreSQL schema columns strictly
