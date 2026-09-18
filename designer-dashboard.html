@@ -113,6 +113,13 @@
 
       <!-- Top Right Status & Profile Pill -->
       <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <!-- Test Sound Button -->
+        <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(); if(typeof showToast==='function') showToast('🔔 Playing 3.5s Chime...'); }" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shadow-2xs" title="Test 3.5s Notification Chime">
+          <i data-lucide="volume-2" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <span class="hidden sm:inline">🔔 Test Sound (3.5s)</span>
+          <span class="sm:hidden">Test</span>
+        </button>
+
         <!-- Live Status Indicator -->
         <button id="toggle-availability-btn" class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold transition-colors">
           <span id="status-indicator" class="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0"></span>
@@ -365,7 +372,11 @@
                 <p class="text-xs text-slate-500">Select an open client work below to claim your spot and coordinate directly with operations.</p>
               </div>
 
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(); }" class="p-2.5 px-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs" title="Test 3-4s New Job Notification Sound">
+                  <i data-lucide="volume-2" class="w-4 h-4 text-emerald-600"></i>
+                  <span>Test Alert Sound (3.5s)</span>
+                </button>
                 <button id="refresh-jobs-btn" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors">
                   <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                   <span>Refresh Feed</span>
@@ -2579,6 +2590,9 @@
       }
 
       initSupabaseRealtime();
+      if (window.DQSoundService) {
+        window.DQSoundService.initJobSoundWatcher('Designer Workstation');
+      }
 
       // Auto poll every 45 seconds & verify session (pauses when tab hidden)
       setInterval(() => {
