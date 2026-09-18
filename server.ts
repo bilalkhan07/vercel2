@@ -606,16 +606,20 @@ async function startServer() {
             );
 
             if (isMasterPassValid) {
+              const adminTargetEmail = (lowerId.includes('@') && !lowerId.includes('designquixobilal')) 
+                ? lowerId 
+                : 'mustafazthings@gmail.com';
+
               res.setHeader('Content-Type', 'application/json');
               return res.end(JSON.stringify({
                 success: true,
                 user: {
                   role: 'admin',
-                  name: 'Master Administrator',
+                  name: 'Bilal Khan (Master Administrator)',
                   identifier: 'admin@designquixobilal',
                   phone: '8602420897',
-                  email: 'designquixo@gmail.com',
-                  displayLabel: 'designquixo@gmail.com'
+                  email: adminTargetEmail,
+                  displayLabel: adminTargetEmail
                 }
               }));
             } else {
@@ -630,10 +634,10 @@ async function startServer() {
           const isEmail = lowerId.includes('@');
 
           // Check if designer was marked as deleted
-          if (serverDeletedDesignerSet.has(lowerId) || (cleanPhone && serverDeletedDesignerSet.has(cleanPhone))) {
+          if (serverDeletedDesignerSet.has(lowerId) || (cleanPhone && cleanPhone.length === 10 && serverDeletedDesignerSet.has(cleanPhone))) {
             res.statusCode = 403;
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: false, message: 'This designer account has been deleted by the administrator.' }));
+            return res.end(JSON.stringify({ success: false, message: 'This creator account has been removed by the administrator.' }));
           }
 
           let designer: any = null;
@@ -650,9 +654,9 @@ async function startServer() {
                 if (isEmail) {
                   return dEmail === lowerId || dId === lowerId || rawDbId === lowerId;
                 } else if (cleanPhone && cleanPhone.length === 10) {
-                  return dPhone === cleanPhone || dId === cleanPhone || rawDbId === cleanPhone;
+                  return dPhone === cleanPhone || dId === cleanPhone || rawDbId === cleanPhone || dId.includes(cleanPhone);
                 }
-                return dId === lowerId || rawDbId === lowerId;
+                return dId === lowerId || rawDbId === lowerId || dEmail === lowerId;
               });
             }
           } catch (dbErr) {
