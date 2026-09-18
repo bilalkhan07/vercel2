@@ -1095,11 +1095,17 @@
           }
 
           // Play 5x MP3 alert immediately on submission (user just clicked, audio is 100% unlocked)
-          if (window.DQSoundService) {
-            window.DQSoundService.unlockAudio();
-            if (typeof window.DQSoundService.playNewJobChime === 'function') {
-              window.DQSoundService.playNewJobChime(5);
+          try {
+            if (typeof window.playNewJobChime === 'function') {
+              window.playNewJobChime(5);
+            } else if (window.DQSoundService) {
+              window.DQSoundService.unlockAudio();
+              if (typeof window.DQSoundService.playNewJobChime === 'function') {
+                window.DQSoundService.playNewJobChime(5);
+              }
             }
+          } catch(e) {
+            console.warn('Submission audio play error:', e);
           }
         } catch (err) {}
 
