@@ -1821,10 +1821,10 @@ const DQSoundService = {
       toast.id = bannerId;
       toast.className = 'fixed top-4 right-4 z-[99999] max-w-sm w-full bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-start gap-3.5 transition-all duration-500 transform translate-y-0 cursor-pointer animate-pulse';
       
-      const rawId = job.id || job.jobId || 'JOB';
+      const rawId = (job && (job.id || job.jobId)) ? (job.id || job.jobId) : 'JOB';
       const jobId = (window.DQStore && window.DQStore.normalizeJobId) ? window.DQStore.normalizeJobId(rawId) : rawId;
-      const proj = job.project || job.projectName || job.service || 'Design Request';
-      const status = job.status || 'Updated';
+      const proj = (job && (job.project || job.projectName || job.service)) ? (job.project || job.projectName || job.service) : 'Design Request';
+      const status = (job && job.status) ? job.status : 'Updated';
 
       toast.innerHTML = `
         <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-400/40 text-lg">
@@ -1836,7 +1836,7 @@ const DQSoundService = {
             <span class="text-[11px] font-bold text-amber-400">${status}</span>
           </div>
           <h4 class="font-bold text-sm text-white truncate max-w-[200px]">${proj}</h4>
-          <p class="text-[11px] text-slate-300 font-mono">Job #${jobId} • Playing 5x Alert Sound</p>
+          <p class="text-[11px] text-slate-300 font-mono">Job #${jobId} • Click to Hear 5x Alert</p>
         </div>
         <button type="button" onclick="event.stopPropagation(); this.parentElement.remove()" class="text-slate-400 hover:text-white p-1 cursor-pointer">
           ✕
@@ -1878,6 +1878,7 @@ const DQSoundService = {
     let isInitialColdLoad = Object.keys(snapshotMap).length === 0;
     let updatedJob = null;
     let updateType = 'Job Alert';
+    const now = Date.now();
 
     jobsList.forEach(job => {
       if (!job) return;
@@ -1894,10 +1895,13 @@ const DQSoundService = {
       const currentSignature = `${st}_${completed}_${acceptedBy}_${revisionCount}`;
       const previousSignature = snapshotMap[normId];
 
+      const createdAtMs = job.createdAt ? new Date(job.createdAt).getTime() : 0;
+      const isRecentlyCreated = createdAtMs > 0 && (now - createdAtMs < 120000); // created within last 2 mins
+
       if (!previousSignature) {
         // Brand new job
         snapshotMap[normId] = currentSignature;
-        if (!isInitialColdLoad) {
+        if (!isInitialColdLoad || isRecentlyCreated) {
           updatedJob = job;
           updateType = 'New Job Uploaded';
         }
@@ -1913,7 +1917,7 @@ const DQSoundService = {
       localStorage.setItem('dq_sound_job_snapshots', JSON.stringify(snapshotMap));
     } catch(e) {}
 
-    if (updatedJob && !isInitialColdLoad) {
+    if (updatedJob) {
       console.log(`[DQSoundService] 🔔 Job Update detected (#${updatedJob.id} - ${updateType}) in ${panelName}! Playing alert 5 times...`);
       this.playNewJobChime(5);
       this.showNewJobBanner(updatedJob, updateType);
@@ -1937,6 +1941,25 @@ const DQSoundService = {
       window.addEventListener(evt, unlockHandler, { passive: true, once: false });
       document.addEventListener(evt, unlockHandler, { passive: true, once: false });
     });
+
+    // Cross-tab BroadcastChannel for 0ms instant sync across browser tabs
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('dq_realtime_jobs');
+        bc.onmessage = (event) => {
+          if (event && event.data) {
+            const data = event.data;
+            console.log(`[DQSoundService] ⚡ Realtime Broadcast received on ${panelName}:`, data);
+            if (data.type === 'NEW_JOB' || data.type === 'JOB_UPDATE') {
+              this.playNewJobChime(5);
+              if (data.job) {
+                this.showNewJobBanner(data.job, data.type === 'NEW_JOB' ? 'New Job Alert' : 'Job Updated');
+              }
+            }
+          }
+        };
+      }
+    } catch(e) {}
 
     // Check currently stored jobs
     try {
@@ -1963,14 +1986,14 @@ const DQSoundService = {
         try {
           const alertData = JSON.parse(e.newValue || '{}');
           if (alertData && alertData.id) {
-            this.playNewJobChime();
-            this.showNewJobBanner(alertData);
+            this.playNewJobChime(5);
+            this.showNewJobBanner(alertData, 'New Job Alert');
           }
         } catch(err) {}
       }
     });
 
-    // 3. Regular active polling check every 4 seconds
+    // 3. Regular active polling check every 3.5 seconds
     setInterval(() => {
       try {
         const currentJobs = JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
@@ -1978,7 +2001,7 @@ const DQSoundService = {
           this.checkAndAlertNewJobs(currentJobs, panelName);
         }
       } catch(e) {}
-    }, 4000);
+    }, 3500);
 
     // 4. Hook into Supabase Realtime if active
     const hookSupabase = () => {
