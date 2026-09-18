@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login / Join as Designer - Design Quixo</title>
+    <title>Creator & Admin Portal Login - Design Quixo India</title>
     <meta name="description" content="Secure authentication gateway for Design Quixo verified creators, operations support, and platform admins." />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="shortcut icon" type="image/png" href="favicon.png" />
@@ -1275,10 +1275,23 @@
             return `${u.substring(0, 2)}***${u.slice(-1)}@${d}`;
           };
 
-          function performClientFallbackAuth(ident, pass) {
+          async function performClientFallbackAuth(ident, pass) {
             const cleanIdent = (ident || '').toString().trim().toLowerCase();
             const cleanPass = (pass || '').toString().trim();
             const storedAdminPass = localStorage.getItem('dq_admin_password') || '@Bilal@786';
+
+            // Check deleted blacklist
+            try {
+              const deleted = JSON.parse(localStorage.getItem('dq_deleted_designers') || '[]');
+              const cleanDigits = cleanIdent.replace(/\D/g, '').slice(-10);
+              if (deleted.some(d => {
+                const cd = (d || '').toString().toLowerCase().trim();
+                return cd === cleanIdent || (cleanDigits && cd.replace(/\D/g, '').slice(-10) === cleanDigits);
+              })) {
+                console.warn('[AUTH] Designer is permanently deleted');
+                return null;
+              }
+            } catch(e) {}
 
             // Check Admin credentials
             const isAdminIdent = (
@@ -1303,25 +1316,46 @@
               }
             }
 
-            // Check Registered Designers
+            // Check Registered Designers locally
             let designers = [];
             try {
-              if (window.DQStore && typeof window.DQStore.getRegisteredDesigners === 'function') {
-                designers = window.DQStore.getRegisteredDesigners();
-              } else {
-                designers = JSON.parse(localStorage.getItem('dq_designers') || '[]');
-              }
+              const d1 = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]');
+              const d2 = JSON.parse(localStorage.getItem('dq_approved_designers') || '[]');
+              const d3 = (window.DQStore && typeof window.DQStore.getRegisteredDesigners === 'function') ? window.DQStore.getRegisteredDesigners() : [];
+              designers = [...d1, ...d2, ...d3];
             } catch(e) {}
 
-            const cleanPhoneDigits = cleanIdent.replace(/\D/g, '');
-            const found = designers.find(d => {
+            const cleanPhoneDigits = cleanIdent.replace(/\D/g, '').slice(-10);
+            let found = designers.find(d => {
               if (!d) return false;
-              const dEmail = (d.email || '').toLowerCase().trim();
-              const dPhone = (d.phone || d.whatsapp || '').toString().replace(/\D/g, '');
+              const dEmail = (d.email || d.identifier || '').toLowerCase().trim();
+              const dPhone = (d.phone || d.whatsapp || d.identifier || '').toString().replace(/\D/g, '').slice(-10);
               if (dEmail && dEmail === cleanIdent) return true;
-              if (cleanPhoneDigits && cleanPhoneDigits.length >= 10 && dPhone && dPhone.endsWith(cleanPhoneDigits.slice(-10))) return true;
+              if (cleanPhoneDigits && dPhone && dPhone === cleanPhoneDigits) return true;
               return false;
             });
+
+            // If not found locally, query Supabase directly in real-time
+            if (!found) {
+              try {
+                const SUPABASE_URL = 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
+                let filter = cleanIdent.includes('@') ? `email=eq.${encodeURIComponent(cleanIdent)}` : (cleanPhoneDigits ? `phone=ilike.%${cleanPhoneDigits}` : '');
+                if (filter) {
+                  const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/designers?${filter}&select=*`, {
+                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+                  });
+                  if (sbRes.ok) {
+                    const sbRows = await sbRes.json();
+                    if (Array.isArray(sbRows) && sbRows.length > 0) {
+                      found = sbRows[0];
+                    }
+                  }
+                }
+              } catch (sbErr) {
+                console.warn('Realtime Supabase fallback error:', sbErr);
+              }
+            }
 
             if (found) {
               const dPass = (found.password || found.pin || found.accessPin || '123456').toString().trim();
@@ -1341,12 +1375,12 @@
             return null;
           }
 
-          // SECURE BACKEND AUTHENTICATION (With static host / Vercel client fallback)
+          // 1. SECURE BACKEND AUTHENTICATION (With real-time Supabase direct fallback)
           let targetUser = null;
           try {
             let localDesignersBackup = null;
             try {
-              const reg = (window.DQStore && typeof window.DQStore.getRegisteredDesigners === 'function') ? window.DQStore.getRegisteredDesigners() : JSON.parse(localStorage.getItem('dq_designers') || '[]');
+              const reg = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]');
               const curr = JSON.parse(localStorage.getItem('dq_current_user') || 'null');
               localDesignersBackup = { registered: reg, current: curr };
             } catch(e) {}
@@ -1362,57 +1396,121 @@
               if (authData && authData.success) {
                 targetUser = authData.user;
               } else {
-                targetUser = performClientFallbackAuth(identifier, enteredPass);
+                targetUser = await performClientFallbackAuth(identifier, enteredPass);
                 if (!targetUser) {
                   btnLoginSubmit.disabled = false;
-                  btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
+                  btnLoginSubmit.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i><span>Sign In to Workstation</span>`;
                   lucide.createIcons();
                   setLoginAlert(authData?.message || 'Invalid credentials entered. Please verify your details and try again.', 'error');
                   return;
                 }
               }
             } else {
-              targetUser = performClientFallbackAuth(identifier, enteredPass);
+              targetUser = await performClientFallbackAuth(identifier, enteredPass);
             }
           } catch (netErr) {
-            console.warn('Backend endpoint unavailable, falling back to local credentials verification:', netErr);
-            targetUser = performClientFallbackAuth(identifier, enteredPass);
+            console.warn('Backend endpoint notice, falling back to direct Supabase / local verification:', netErr);
+            targetUser = await performClientFallbackAuth(identifier, enteredPass);
           }
 
           if (!targetUser) {
             btnLoginSubmit.disabled = false;
-            btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
+            btnLoginSubmit.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i><span>Sign In to Workstation</span>`;
             lucide.createIcons();
-            setLoginAlert('Invalid password or unregistered account. Please check your credentials.', 'error');
+            setLoginAlert('Invalid credentials or unregistered account. Please check your details or sign up.', 'error');
             return;
           }
 
-          // Credentials passed! Transition immediately to Step 2 OTP verification screen
-          pendingLoginUser = targetUser;
-          loginCredsForm.classList.add('hidden');
-          loginOtpStep.classList.remove('hidden');
-          if (loginOtpPhoneDisplay) {
-            loginOtpPhoneDisplay.textContent = targetUser.role === 'admin' ? 'Registered Administrator Email' : (targetUser.displayLabel || 'Registered Email');
-          }
-          loginOtpCode.value = '';
-          loginOtpCode.focus();
-          startLoginResendCountdown(30);
+          // CREDENTIALS VALIDATED! Log in directly into dashboard with zero artificial friction
+          const db = await getSupabaseService();
 
-          setLoginAlert(`✓ <strong>6-digit verification code dispatched.</strong><br/><span class="text-[12px] font-normal">Please check your email inbox (including the spam folder) and enter the 6-digit code below to proceed.</span>`, 'success');
+          if (targetUser.role === 'admin') {
+            localStorage.setItem('dq_admin_logged_in', 'true');
+            const adminUser = {
+              name: 'Bilal Khan (Master Admin)',
+              role: 'admin',
+              identifier: 'admin@designquixobilal',
+              phone: targetUser.phone || '8602420897',
+              email: targetUser.email || 'designquixo@gmail.com',
+              status: 'Approved'
+            };
+            localStorage.setItem('dq_current_user', JSON.stringify(adminUser));
+            sessionStorage.setItem('dq_current_user', JSON.stringify(adminUser));
 
-          btnLoginSubmit.disabled = false;
-          btnLoginSubmit.innerHTML = `<i data-lucide="key" class="w-4 h-4"></i><span>Verify Password & Send Email OTP</span>`;
-          lucide.createIcons();
-
-          const userName = targetUser.name || (targetUser.designerData && targetUser.designerData.name) || '';
-          // Instant direct dispatch in background (< 50ms)
-          sendDirectEmailOtp(targetUser.email, userName, 'Login Verification').then(res => {
-            if (res.success && res.message) {
-              setLoginAlert(res.message, 'success');
-            } else if (!res.success) {
-              setLoginAlert(res.message || 'Unable to dispatch OTP. Please click Resend Code.', 'error');
+            if (db && typeof db.logUserLogin === 'function') {
+              try {
+                await db.logUserLogin({
+                  phone: adminUser.phone,
+                  name: adminUser.name,
+                  role: 'admin',
+                  status: 'Admin Login (Password Verified)'
+                });
+              } catch(e) {}
             }
-          });
+
+            setLoginAlert('✓ Admin verified! Redirecting to Control Center...', 'success');
+            setTimeout(() => {
+              window.location.href = 'admin-dashboard.html';
+            }, 300);
+            return;
+          }
+
+          // DESIGNER LOGIN - Save complete session & sync approval from Supabase
+          const designerUser = {
+            ...(targetUser.designerData || {}),
+            id: targetUser.id || (targetUser.designerData && targetUser.designerData.id) || targetUser.phone || targetUser.email,
+            name: targetUser.name || (targetUser.designerData && targetUser.designerData.name) || 'Verified Designer',
+            email: targetUser.email || (targetUser.designerData && targetUser.designerData.email) || '',
+            phone: targetUser.phone || (targetUser.designerData && targetUser.designerData.phone) || '',
+            identifier: targetUser.identifier || targetUser.email || targetUser.phone,
+            role: 'designer',
+            status: (targetUser.designerData && targetUser.designerData.status) || targetUser.status || 'Approved',
+            verified: true
+          };
+
+          localStorage.setItem('dq_current_user', JSON.stringify(designerUser));
+          sessionStorage.setItem('dq_current_user', JSON.stringify(designerUser));
+
+          // Ensure local approved cache is updated so designer-dashboard won't gate them
+          try {
+            let registered = JSON.parse(localStorage.getItem('dq_registered_designers') || '[]');
+            const dPhone = get10DigitPhone(designerUser.phone);
+            const dEmail = (designerUser.email || '').toLowerCase();
+            registered = registered.filter(d => {
+              const p = get10DigitPhone(d.phone || d.identifier);
+              const em = (d.email || '').toLowerCase();
+              return (!dPhone || p !== dPhone) && (!dEmail || em !== dEmail);
+            });
+            registered.unshift(designerUser);
+            localStorage.setItem('dq_registered_designers', JSON.stringify(registered));
+
+            if (designerUser.status === 'Approved') {
+              let approved = JSON.parse(localStorage.getItem('dq_approved_designers') || '[]');
+              approved = approved.filter(d => {
+                const p = get10DigitPhone(d.phone || d.identifier);
+                const em = (d.email || '').toLowerCase();
+                return (!dPhone || p !== dPhone) && (!dEmail || em !== dEmail);
+              });
+              approved.unshift(designerUser);
+              localStorage.setItem('dq_approved_designers', JSON.stringify(approved));
+            }
+          } catch(e) {}
+
+          if (db && typeof db.logUserLogin === 'function') {
+            try {
+              await db.logUserLogin({
+                phone: designerUser.phone || designerUser.email,
+                name: designerUser.name,
+                role: 'designer',
+                status: `Designer Login (${designerUser.status})`
+              });
+            } catch(e) {}
+          }
+
+          setLoginAlert(`✓ Welcome back, ${designerUser.name}! Opening workstation...`, 'success');
+          setTimeout(() => {
+            window.location.href = 'designer-dashboard.html';
+          }, 300);
         });
       }
 
