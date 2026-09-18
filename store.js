@@ -1555,276 +1555,280 @@ window.DQStore = {
 };
 
 // =========================================================================
-// DESIGN QUIXO 3.5-SECOND HARMONIC NOTIFICATION CHIME & REALTIME SOUND ENGINE
-// Plays crystal-clear harmonic chime alert whenever a new job is uploaded
-// =========================================================================
-const DQSoundService = {
-  audioCtx: null,
-  isUnlocked: false,
-  pendingChime: false,
-  initializedWatcher: false,
-  soundEnabled: true,
-  _cachedWavUri: null,
 
-  getAudioContext() {
-    if (typeof window === 'undefined') return null;
+
+// =========================================================================
+// DESIGN QUIXO 5X NOTIFICATION SOUND ENGINE & AUDIO SERVICE
+// Plays user-provided notification MP3 (universfield chime) 5 times
+// Supports Web Audio API (scheduled hardware clock), HTML5 Audio, and Synthesis
+// =========================================================================
+(function() {
+  if (typeof window === "undefined") return;
+
+  const service = window.DQSoundService || {};
+
+  service.audioCtx = service.audioCtx || null;
+  service.isUnlocked = service.isUnlocked || false;
+  service.pendingChime = service.pendingChime || false;
+  service.pendingRepeatCount = service.pendingRepeatCount || 5;
+  service.initializedWatcher = service.initializedWatcher || false;
+  service.soundEnabled = true;
+  service._decodedBuffer = service._decodedBuffer || null;
+  service._isDecoding = false;
+  service._isPlaying = false;
+
+  service.getAudioContext = function() {
     try {
-      if (!this.audioCtx || this.audioCtx.state === 'closed') {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-        if (AudioContextClass) {
-          this.audioCtx = new AudioContextClass();
+      if (!this.audioCtx || this.audioCtx.state === "closed") {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          this.audioCtx = new AudioCtx();
         }
       }
       return this.audioCtx;
     } catch(e) {
       return null;
     }
-  },
+  };
 
-  /**
-   * Generates a self-contained 3.5s 16-bit PCM WAV chime Data URI fallback
-   */
-  getFallbackWavUri() {
-    if (this._cachedWavUri) return this._cachedWavUri;
-    try {
-      const sampleRate = 22050;
-      const duration = 3.5;
-      const numSamples = Math.floor(sampleRate * duration);
-      const buffer = new ArrayBuffer(44 + numSamples * 2);
-      const view = new DataView(buffer);
+  service.preDecodeAudio = async function() {
+    if (this._decodedBuffer || this._isDecoding) return;
+    this._isDecoding = true;
 
-      const writeString = (offset, str) => {
-        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-      };
-      writeString(0, 'RIFF');
-      view.setUint32(4, 36 + numSamples * 2, true);
-      writeString(8, 'WAVE');
-      writeString(12, 'fmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, 1, true);
-      view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate * 2, true);
-      view.setUint16(32, 2, true);
-      view.setUint16(34, 16, true);
-      writeString(36, 'data');
-      view.setUint32(40, numSamples * 2, true);
-
-      const notes = [
-        [0.00, 0.70, 523.25, 0.50], // C5
-        [0.28, 0.75, 659.25, 0.55], // E5
-        [0.56, 0.85, 783.99, 0.60], // G5
-        [0.84, 1.10, 1046.50, 0.65], // C6
-        [1.40, 0.70, 659.25, 0.50], // E5
-        [1.68, 0.80, 783.99, 0.55], // G5
-        [1.96, 1.00, 1046.50, 0.65], // C6
-        [2.24, 1.40, 1318.51, 0.75], // E6
-        [2.24, 1.20, 1567.98, 0.35]  // G6
-      ];
-
-      for (let i = 0; i < numSamples; i++) {
-        const t = i / sampleRate;
-        let sample = 0;
-
-        for (let n = 0; n < notes.length; n++) {
-          const [nStart, nDur, nFreq, nVol] = notes[n];
-          if (t >= nStart && t < nStart + nDur) {
-            const relT = t - nStart;
-            const env = Math.max(0, 1 - (relT / nDur)) * Math.min(1, relT / 0.02);
-            const s1 = Math.sin(2 * Math.PI * nFreq * relT);
-            const s2 = 0.35 * Math.sin(2 * Math.PI * (nFreq * 2) * relT);
-            sample += (s1 + s2) * env * nVol;
-          }
-        }
-
-        sample = Math.max(-1, Math.min(1, sample * 0.75));
-        view.setInt16(44 + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-      }
-
-      let binary = '';
-      const bytes = new Uint8Array(buffer);
-      for (let b = 0; b < bytes.byteLength; b++) {
-        binary += String.fromCharCode(bytes[b]);
-      }
-      this._cachedWavUri = 'data:audio/wav;base64,' + btoa(binary);
-      return this._cachedWavUri;
-    } catch(e) {
-      return '';
+    const ctx = this.getAudioContext();
+    if (!ctx) {
+      this._isDecoding = false;
+      return;
     }
-  },
 
-  async unlockAudio() {
+    // 1. Try direct MP3 file URLs
+    const urls = ["/notification.mp3", "/universfield-new-notification-036-485897.mp3", "notification.mp3"];
+    for (const u of urls) {
+      try {
+        const res = await fetch(u);
+        if (res.ok) {
+          const ab = await res.arrayBuffer();
+          ctx.decodeAudioData(ab, (buf) => {
+            this._decodedBuffer = buf;
+            this._isDecoding = false;
+            console.log("[DQSoundService] ✅ MP3 buffer decoded successfully from " + u + " (" + buf.duration.toFixed(2) + "s)");
+          }, () => {});
+          return;
+        }
+      } catch(e) {}
+    }
+
+    // 2. Try embedded base64 Data URI
+    try {
+      const uri = window.NOTIFICATION_MP3_DATA_URI || this.mp3DataUri;
+      if (uri) {
+        const b64 = uri.replace(/^data:audio\/[^;]+;base64,/, "");
+        const binary = window.atob(b64);
+        const len = binary.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        ctx.decodeAudioData(bytes.buffer.slice(0), (buf) => {
+          this._decodedBuffer = buf;
+          this._isDecoding = false;
+          console.log("[DQSoundService] ✅ MP3 buffer decoded from base64 Data URI (" + buf.duration.toFixed(2) + "s)");
+        }, () => {
+          this._isDecoding = false;
+        });
+      }
+    } catch(e) {
+      this._isDecoding = false;
+    }
+  };
+
+  service.unlockAudio = async function() {
+    this.isUnlocked = true;
     try {
       const ctx = this.getAudioContext();
-      if (ctx && ctx.state === 'suspended') {
+      if (ctx && ctx.state === "suspended") {
         await ctx.resume();
       }
-      if (ctx && ctx.state === 'running') {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        gain.gain.value = 0.0001;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.01);
+      if (ctx && ctx.state === "running") {
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          gain.gain.value = 0.00001;
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.01);
+        } catch(e) {}
       }
-      this.isUnlocked = true;
 
-      // If a chime was queued while the browser audio policy was locked, play it now!
+      this.preDecodeAudio();
+
+      const banner = document.getElementById("dq-audio-unlock-banner");
+      if (banner) banner.remove();
+
       if (this.pendingChime) {
         this.pendingChime = false;
-        console.log('[DQSoundService] 🔔 Playing deferred pending chime upon user unlock!');
-        this.playNewJobChime();
+        const count = this.pendingRepeatCount || 5;
+        console.log("[DQSoundService] 🔔 Playing queued " + count + "x chime now that audio is unlocked!");
+        this.playNewJobChime(count);
       }
     } catch(e) {}
-  },
+  };
 
-  /**
-   * Plays a single whistle/chime notification burst using the uploaded MP3
-   */
-  async playSingleTone() {
-    let played = false;
+  service.playNewJobChime = async function(repeatCount = 5) {
+    if (!this.soundEnabled) return false;
+    console.log("[DQSoundService] 🔊 Playing " + repeatCount + "x Notification Sound Alert...");
 
-    // 1. Try uploaded MP3 files with proper completion waiting
-    const sources = [
-      '/universfield-new-notification-036-485897.mp3',
-      '/notification.mp3',
-      'universfield-new-notification-036-485897.mp3'
-    ];
-
-    for (const src of sources) {
-      try {
-        const result = await new Promise((resolve) => {
-          const audio = new Audio(src);
-          audio.volume = 1.0;
-          let settled = false;
-          const finish = (val) => {
-            if (settled) return;
-            settled = true;
-            resolve(val);
-          };
-          audio.onended = () => finish(true);
-          audio.onerror = () => finish(false);
-          const p = audio.play();
-          if (p !== undefined) {
-            p.then(() => {
-              // Safety timeout in case onended doesn't fire
-              setTimeout(() => finish(true), 2000);
-            }).catch(() => finish(false));
-          } else {
-            setTimeout(() => finish(true), 1500);
-          }
-        });
-
-        if (result) {
-          return true;
-        }
-      } catch(e) {}
+    const ctx = this.getAudioContext();
+    if (ctx && ctx.state === "suspended") {
+      try { ctx.resume(); } catch(e) {}
     }
 
-    // 2. Web Audio whistle/chime synthesis fallback
-    try {
-      const ctx = this.getAudioContext();
-      if (ctx) {
-        if (ctx.state === 'suspended') {
-          try { await ctx.resume(); } catch(e) {}
-        }
+    if (!this._decodedBuffer) {
+      this.preDecodeAudio();
+    }
 
-        if (ctx.state === 'running') {
-          const now = ctx.currentTime;
-          
-          // Whistle / chime tone
-          const osc1 = ctx.createOscillator();
-          const osc2 = ctx.createOscillator();
+    // STRATEGY 1: Web Audio BufferSource hardware-clock scheduling (Best quality, 0 latency, immune to background tab throttle)
+    if (ctx && ctx.state === "running" && this._decodedBuffer) {
+      try {
+        console.log("[DQSoundService] 🎵 Scheduling " + repeatCount + "x MP3 bursts via Web Audio hardware clock!");
+        const start = ctx.currentTime;
+        for (let i = 0; i < repeatCount; i++) {
+          const src = ctx.createBufferSource();
+          src.buffer = this._decodedBuffer;
           const gain = ctx.createGain();
-
-          osc1.type = 'sine';
-          osc2.type = 'triangle';
-
-          // Whistle slide: 1200Hz -> 1800Hz -> 1400Hz -> 2000Hz
-          osc1.frequency.setValueAtTime(1046.5, now);
-          osc1.frequency.exponentialRampToValueAtTime(1567.98, now + 0.12);
-          osc1.frequency.exponentialRampToValueAtTime(1318.51, now + 0.22);
-          osc1.frequency.exponentialRampToValueAtTime(2093.00, now + 0.38);
-
-          osc2.frequency.setValueAtTime(1046.5 * 2, now);
-          osc2.frequency.exponentialRampToValueAtTime(1567.98 * 2, now + 0.12);
-          osc2.frequency.exponentialRampToValueAtTime(2093.00 * 2, now + 0.38);
-
-          gain.gain.setValueAtTime(0.0001, now);
-          gain.gain.exponentialRampToValueAtTime(0.7, now + 0.04);
-          gain.gain.setValueAtTime(0.6, now + 0.25);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
-
-          osc1.connect(gain);
-          osc2.connect(gain);
+          gain.gain.value = 1.0;
+          src.connect(gain);
           gain.connect(ctx.destination);
-
-          osc1.start(now);
-          osc2.start(now);
-          osc1.stop(now + 0.56);
-          osc2.stop(now + 0.56);
-
-          await new Promise(r => setTimeout(r, 600));
-          played = true;
+          src.start(start + (i * 0.65));
         }
+        this.clearPendingAlerts();
+        return true;
+      } catch(err) {
+        console.warn("[DQSoundService] Web Audio buffer error:", err);
+      }
+    }
+
+    // STRATEGY 2: HTML5 Audio fallback
+    try {
+      console.log("[DQSoundService] 🎵 Playing " + repeatCount + "x MP3 via HTML5 Audio!");
+      for (let i = 0; i < repeatCount; i++) {
+        setTimeout(() => {
+          try {
+            const audio = new Audio("/notification.mp3");
+            audio.volume = 1.0;
+            const p = audio.play();
+            if (p !== undefined) {
+              p.then(() => {
+                this.clearPendingAlerts();
+              }).catch((err) => {
+                console.warn("[DQSoundService] HTML5 Audio autoplay blocked:", err?.name);
+                this.pendingChime = true;
+                this.pendingRepeatCount = repeatCount;
+                this.showAutoplayUnlockBanner();
+              });
+            }
+          } catch(e) {}
+        }, i * 650);
+      }
+      return true;
+    } catch(e) {}
+
+    // STRATEGY 3: Harmonic Synthesizer Chimes
+    try {
+      if (ctx && ctx.state === "running") {
+        for (let i = 0; i < repeatCount; i++) {
+          setTimeout(() => {
+            try {
+              const now = ctx.currentTime;
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(1046.5, now);
+              osc.frequency.exponentialRampToValueAtTime(1567.98, now + 0.08);
+              osc.frequency.exponentialRampToValueAtTime(2093.00, now + 0.28);
+              gain.gain.setValueAtTime(0.0001, now);
+              gain.gain.exponentialRampToValueAtTime(0.8, now + 0.04);
+              gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(now);
+              osc.stop(now + 0.46);
+            } catch(e) {}
+          }, i * 500);
+        }
+        return true;
       }
     } catch(e) {}
 
-    // 3. Fallback WAV
-    if (!played) {
-      try {
-        const uri = this.getFallbackWavUri();
-        if (uri) {
-          const audio = new Audio(uri);
-          audio.volume = 1.0;
-          await audio.play();
-          played = true;
-        }
-      } catch(err) {
-        this.pendingChime = true;
-      }
-    }
-    return played;
-  },
+    this.pendingChime = true;
+    this.pendingRepeatCount = repeatCount;
+    this.showAutoplayUnlockBanner();
+    return false;
+  };
 
-  /**
-   * Plays the notification alert 5 TIMES in succession whenever a job is created or updated
-   */
-  async playNewJobChime(repeatCount = 5) {
-    if (typeof window === 'undefined') return;
-    if (!this.soundEnabled) return;
-    console.log(`[DQSoundService] 🔔 Playing Notification Sound ${repeatCount} times for Job Event...`);
+  service.playSingleTone = function() {
+    return this.playNewJobChime(1);
+  };
 
-    for (let i = 0; i < repeatCount; i++) {
-      try {
-        await this.playSingleTone();
-      } catch(e) {}
-      // 250ms gap between each chime
-      if (i < repeatCount - 1) {
-        await new Promise(r => setTimeout(r, 260));
-      }
-    }
-  },
-
-  /**
-   * Displays a floating banner toast when a new job or update arrives
-   */
-  showNewJobBanner(job, title = 'Job Update Alert') {
-    if (typeof document === 'undefined') return;
+  service.clearPendingAlerts = function() {
+    this.pendingChime = false;
     try {
-      const bannerId = 'dq-new-job-audio-toast';
+      localStorage.removeItem("dq_unacknowledged_sound_jobs");
+    } catch(e) {}
+    const banner = document.getElementById("dq-audio-unlock-banner");
+    if (banner) banner.remove();
+  };
+
+  service.showAutoplayUnlockBanner = function(jobTitle = "New Design Brief") {
+    if (typeof document === "undefined") return;
+    const bannerId = "dq-audio-unlock-banner";
+    if (document.getElementById(bannerId)) return;
+
+    const banner = document.createElement("div");
+    banner.id = bannerId;
+    banner.className = "fixed bottom-5 right-5 z-[999999] bg-emerald-600 hover:bg-emerald-700 text-white p-4 px-5 rounded-2xl shadow-2xl border-2 border-white flex items-center gap-3.5 cursor-pointer transition-all duration-300 transform scale-100 hover:scale-105";
+    banner.innerHTML = `
+      <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0 animate-bounce">
+        🔊
+      </div>
+      <div>
+        <div class="font-extrabold text-sm tracking-wide flex items-center gap-1.5">
+          <span>New Job Alert!</span>
+          <span class="bg-amber-400 text-slate-950 text-[10px] px-2 py-0.5 rounded-full font-black">5x SOUND WAITING</span>
+        </div>
+        <div class="text-xs text-emerald-100 mt-0.5 font-medium">Click anywhere or click here to listen to notification sound</div>
+      </div>
+      <button type="button" class="ml-2 bg-white text-emerald-800 font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-sm hover:bg-slate-100">
+        Play Sound (5x)
+      </button>
+    `;
+
+    banner.onclick = (e) => {
+      e.stopPropagation();
+      banner.remove();
+      this.unlockAudio();
+      this.playNewJobChime(5);
+    };
+
+    document.body.appendChild(banner);
+  };
+
+  service.showNewJobBanner = function(job, title = "Job Update Alert") {
+    if (typeof document === "undefined") return;
+    try {
+      const bannerId = "dq-new-job-audio-toast";
       let existing = document.getElementById(bannerId);
       if (existing) existing.remove();
 
-      const toast = document.createElement('div');
+      const toast = document.createElement("div");
       toast.id = bannerId;
-      toast.className = 'fixed top-4 right-4 z-[99999] max-w-sm w-full bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-start gap-3.5 transition-all duration-500 transform translate-y-0 cursor-pointer animate-pulse';
+      toast.className = "fixed top-4 right-4 z-[99999] max-w-sm w-full bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-start gap-3.5 transition-all duration-500 transform translate-y-0 cursor-pointer animate-pulse";
       
-      const rawId = (job && (job.id || job.jobId)) ? (job.id || job.jobId) : 'JOB';
+      const rawId = (job && (job.id || job.jobId)) ? (job.id || job.jobId) : "JOB";
       const jobId = (window.DQStore && window.DQStore.normalizeJobId) ? window.DQStore.normalizeJobId(rawId) : rawId;
-      const proj = (job && (job.project || job.projectName || job.service)) ? (job.project || job.projectName || job.service) : 'Design Request';
-      const status = (job && job.status) ? job.status : 'Updated';
+      const proj = (job && (job.project || job.projectName || job.service)) ? (job.project || job.projectName || job.service) : "Design Request";
+      const status = (job && job.status) ? job.status : "Updated";
 
       toast.innerHTML = `
         <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-400/40 text-lg">
@@ -1843,7 +1847,6 @@ const DQSoundService = {
         </button>
       `;
 
-      // Clicking toast plays sound 5x immediately
       toast.onclick = () => {
         this.unlockAudio();
         this.playNewJobChime(5);
@@ -1854,106 +1857,108 @@ const DQSoundService = {
 
       setTimeout(() => {
         if (toast && toast.parentElement) {
-          toast.style.opacity = '0';
-          toast.style.transform = 'translateY(-10px)';
+          toast.style.opacity = "0";
+          toast.style.transform = "translateY(-10px)";
           setTimeout(() => toast.remove(), 400);
         }
       }, 9000);
     } catch(e) {}
-  },
+  };
 
-  /**
-   * Checks any job list and triggers 5x alert if there is a new job or updated job status
-   */
-  checkAndAlertNewJobs(jobsList, panelName = 'dashboard') {
+  service.checkAndAlertNewJobs = function(jobsList, panelName = "dashboard") {
     if (!Array.isArray(jobsList) || jobsList.length === 0) return;
 
     let snapshotMap = {};
     try {
-      snapshotMap = JSON.parse(localStorage.getItem('dq_sound_job_snapshots') || '{}');
+      snapshotMap = JSON.parse(localStorage.getItem("dq_sound_job_snapshots") || "{}");
     } catch(e) {
       snapshotMap = {};
     }
 
+    let unackedJobs = [];
+    try {
+      unackedJobs = JSON.parse(localStorage.getItem("dq_unacknowledged_sound_jobs") || "[]");
+    } catch(e) {}
+
     let isInitialColdLoad = Object.keys(snapshotMap).length === 0;
     let updatedJob = null;
-    let updateType = 'Job Alert';
+    let updateType = "Job Alert";
     const now = Date.now();
 
     jobsList.forEach(job => {
       if (!job) return;
-      const rawId = (job.id || job.jobId || '').toString().trim();
+      const rawId = (job.id || job.jobId || "").toString().trim();
       if (!rawId) return;
       const normId = (window.DQStore && window.DQStore.normalizeJobId) ? window.DQStore.normalizeJobId(rawId) : rawId.toUpperCase();
 
-      const st = (job.status || 'Pending').toString();
-      const completed = job.completed === true || st.toLowerCase().includes('completed') || st.toLowerCase().includes('delivered');
-      const acceptedBy = Array.isArray(job.acceptedBy) ? job.acceptedBy.join(',') : (job.acceptedBy || '');
+      const st = (job.status || "Pending").toString();
+      const completed = job.completed === true || st.toLowerCase().includes("completed") || st.toLowerCase().includes("delivered");
+      const acceptedBy = Array.isArray(job.acceptedBy) ? job.acceptedBy.join(",") : (job.acceptedBy || "");
       const revisionCount = Array.isArray(job.revisionHistory) ? job.revisionHistory.length : 0;
       
-      // Signature representing state of the job
       const currentSignature = `${st}_${completed}_${acceptedBy}_${revisionCount}`;
       const previousSignature = snapshotMap[normId];
 
-      const createdAtMs = job.createdAt ? new Date(job.createdAt).getTime() : 0;
-      const isRecentlyCreated = createdAtMs > 0 && (now - createdAtMs < 120000); // created within last 2 mins
+      const rawCreated = job.createdAt || job.created_at || job.createdat;
+      const createdAtMs = rawCreated ? new Date(rawCreated).getTime() : 0;
+      const isRecentlyCreated = createdAtMs > 0 && (now - createdAtMs < 300000);
+      const isUnacknowledged = unackedJobs.includes(normId) || unackedJobs.includes(rawId);
 
       if (!previousSignature) {
-        // Brand new job
         snapshotMap[normId] = currentSignature;
-        if (!isInitialColdLoad || isRecentlyCreated) {
+        if (!isInitialColdLoad || isRecentlyCreated || isUnacknowledged) {
           updatedJob = job;
-          updateType = 'New Job Uploaded';
+          updateType = "New Job Uploaded";
         }
       } else if (previousSignature !== currentSignature) {
-        // Job was updated (status changed, designer assigned, delivered, etc.)
         snapshotMap[normId] = currentSignature;
         updatedJob = job;
-        updateType = 'Job Updated: ' + st;
+        updateType = "Job Updated: " + st;
+      } else if (isUnacknowledged) {
+        updatedJob = job;
+        updateType = "New Job Uploaded";
       }
     });
 
     try {
-      localStorage.setItem('dq_sound_job_snapshots', JSON.stringify(snapshotMap));
+      localStorage.setItem("dq_sound_job_snapshots", JSON.stringify(snapshotMap));
     } catch(e) {}
 
     if (updatedJob) {
-      console.log(`[DQSoundService] 🔔 Job Update detected (#${updatedJob.id} - ${updateType}) in ${panelName}! Playing alert 5 times...`);
+      console.log("[DQSoundService] 🔔 Job Update detected (#" + updatedJob.id + " - " + updateType + ") in " + panelName + "! Playing alert 5 times...");
       this.playNewJobChime(5);
       this.showNewJobBanner(updatedJob, updateType);
     }
-  },
+  };
 
-  /**
-   * Initializes background job change watcher on Admin or Designer Dashboard
-   */
-  initJobSoundWatcher(panelName = 'dashboard') {
-    if (typeof window === 'undefined') return;
+  service.initJobSoundWatcher = function(panelName = "dashboard") {
     if (this.initializedWatcher) return;
     this.initializedWatcher = true;
-    console.log(`[DQSoundService] 🚀 Initializing Job Sound Watcher for "${panelName}"...`);
+    console.log("[DQSoundService] 🚀 Initializing Job Sound Watcher for \"" + panelName + "\"... ");
 
-    // Attach user gesture listeners to unlock AudioContext immediately on first interaction
+    setTimeout(() => {
+      this.preDecodeAudio();
+    }, 100);
+
     const unlockHandler = () => {
       this.unlockAudio();
     };
-    ['click', 'pointerdown', 'touchstart', 'keydown', 'scroll', 'mousemove'].forEach(evt => {
-      window.addEventListener(evt, unlockHandler, { passive: true, once: false });
-      document.addEventListener(evt, unlockHandler, { passive: true, once: false });
+    ["click", "pointerdown", "touchstart", "keydown", "scroll", "mousemove"].forEach(evt => {
+      window.addEventListener(evt, unlockHandler, { passive: true });
+      document.addEventListener(evt, unlockHandler, { passive: true });
     });
 
-    // Cross-tab BroadcastChannel for 0ms instant sync across browser tabs
     try {
-      if (typeof BroadcastChannel !== 'undefined') {
-        const bc = new BroadcastChannel('dq_realtime_jobs');
+      if (typeof BroadcastChannel !== "undefined") {
+        const bc = new BroadcastChannel("dq_realtime_jobs");
         bc.onmessage = (event) => {
           if (event && event.data) {
             const data = event.data;
-            console.log(`[DQSoundService] ⚡ Realtime Broadcast received on ${panelName}:`, data);
-            if (data.type === 'NEW_JOB' || data.type === 'JOB_UPDATE') {
+            console.log("[DQSoundService] ⚡ Realtime Broadcast received on " + panelName + ":", data);
+            if (data.type === "NEW_JOB" || data.type === "JOB_UPDATE") {
               this.playNewJobChime(5);
               if (data.job) {
-                this.showNewJobBanner(data.job, data.type === 'NEW_JOB' ? 'New Job Alert' : 'Job Updated');
+                this.showNewJobBanner(data.job, data.type === "NEW_JOB" ? "New Job Alert" : "Job Updated");
               }
             }
           }
@@ -1961,93 +1966,91 @@ const DQSoundService = {
       }
     } catch(e) {}
 
-    // Check currently stored jobs
     try {
-      const currentJobs = JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
+      const currentJobs = JSON.parse(localStorage.getItem("dq_live_jobs") || "[]");
       if (Array.isArray(currentJobs) && currentJobs.length > 0) {
         this.checkAndAlertNewJobs(currentJobs, panelName);
       }
     } catch(e) {}
 
-    // 1. Listen to custom job broadcast events in current window
-    window.addEventListener('dq_jobs_updated', (e) => {
-      const jobs = (e && e.detail) ? e.detail : JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
+    window.addEventListener("dq_jobs_updated", (e) => {
+      const jobs = (e && e.detail) ? e.detail : JSON.parse(localStorage.getItem("dq_live_jobs") || "[]");
       this.checkAndAlertNewJobs(jobs, panelName);
     });
 
-    // 2. Listen to cross-tab storage changes
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'dq_live_jobs') {
+    window.addEventListener("storage", (e) => {
+      if (e.key === "dq_live_jobs") {
         try {
-          const jobs = JSON.parse(e.newValue || '[]');
+          const jobs = JSON.parse(e.newValue || "[]");
           this.checkAndAlertNewJobs(jobs, panelName);
         } catch(err) {}
-      } else if (e.key === 'dq_new_job_alert') {
+      } else if (e.key === "dq_new_job_alert") {
         try {
-          const alertData = JSON.parse(e.newValue || '{}');
+          const alertData = JSON.parse(e.newValue || "{}");
           if (alertData && alertData.id) {
             this.playNewJobChime(5);
-            this.showNewJobBanner(alertData, 'New Job Alert');
+            this.showNewJobBanner(alertData, "New Job Alert");
           }
         } catch(err) {}
       }
     });
 
-    // 3. Regular active polling check every 3.5 seconds
     setInterval(() => {
       try {
-        const currentJobs = JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
+        const currentJobs = JSON.parse(localStorage.getItem("dq_live_jobs") || "[]");
         if (Array.isArray(currentJobs) && currentJobs.length > 0) {
           this.checkAndAlertNewJobs(currentJobs, panelName);
         }
       } catch(e) {}
-    }, 3500);
+    }, 2500);
 
-    // 4. Hook into Supabase Realtime if active
     const hookSupabase = () => {
       const db = window.DQSupabase || window.DQFirebase;
-      if (db && typeof db.subscribeJobs === 'function') {
+      if (db && typeof db.subscribeJobs === "function") {
         db.subscribeJobs((liveJobs) => {
           this.checkAndAlertNewJobs(liveJobs, panelName);
         });
       }
     };
     hookSupabase();
-    setTimeout(hookSupabase, 1200);
-  }
-};
+    setTimeout(hookSupabase, 1000);
+  };
 
-if (typeof window !== 'undefined') {
-  window.DQSoundService = DQSoundService;
-  window.DQSound = DQSoundService;
-  window.playNewJobChime = () => DQSoundService.playNewJobChime();
-}
+  window.DQSoundService = service;
+  window.DQSound = service;
+  window.playNewJobChime = function(count = 5) {
+    return service.playNewJobChime(count);
+  };
+
+  service.preDecodeAudio();
+  ["click", "pointerdown", "touchstart", "keydown"].forEach(evt => {
+    window.addEventListener(evt, () => service.unlockAudio(), { passive: true, once: true });
+  });
+})();
 
 // Immediate self-cleanup of legacy demo jobs & deleted jobs sync
 (function() {
   try {
     let deletedJobs = [];
-    try { deletedJobs = JSON.parse(localStorage.getItem('dq_deleted_jobs') || '[]'); } catch(e) {}
-    ['DQ-8492', '8492', 'DQ8492', 'DQ-7319', '7319', 'DQ7319'].forEach(v => {
+    try { deletedJobs = JSON.parse(localStorage.getItem("dq_deleted_jobs") || "[]"); } catch(e) {}
+    ["DQ-8492", "8492", "DQ8492", "DQ-7319", "7319", "DQ7319"].forEach(v => {
       if (!deletedJobs.includes(v)) deletedJobs.push(v);
     });
-    localStorage.setItem('dq_deleted_jobs', JSON.stringify(deletedJobs));
+    localStorage.setItem("dq_deleted_jobs", JSON.stringify(deletedJobs));
 
     let liveJobs = [];
-    try { liveJobs = JSON.parse(localStorage.getItem('dq_live_jobs') || '[]'); } catch(e) {}
+    try { liveJobs = JSON.parse(localStorage.getItem("dq_live_jobs") || "[]"); } catch(e) {}
     if (Array.isArray(liveJobs) && liveJobs.length > 0) {
       const cleaned = liveJobs.filter(j => {
         if (!j) return false;
-        const id = (j.id || j.jobId || '').toString().toUpperCase();
-        const p = (j.project || j.projectName || '').toString();
-        if (id.includes('8492') || id.includes('7319') || p.includes('Urban Spice') || p.includes('TechPulse')) {
+        const id = (j.id || j.jobId || "").toString().toUpperCase();
+        const p = (j.project || j.projectName || "").toString();
+        if (id.includes("8492") || id.includes("7319") || p.includes("Urban Spice") || p.includes("TechPulse")) {
           return false;
         }
         return true;
       });
-      localStorage.setItem('dq_live_jobs', JSON.stringify(cleaned));
+      localStorage.setItem("dq_live_jobs", JSON.stringify(cleaned));
     }
   } catch(e) {}
 })();
-
-
