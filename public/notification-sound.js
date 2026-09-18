@@ -386,6 +386,17 @@
       console.log("[DQSoundService] 🔔 Job Update detected (#" + updatedJob.id + " - " + updateType + ") in " + panelName + "! Playing alert 5 times...");
       this.playNewJobChime(5);
       this.showNewJobBanner(updatedJob, updateType);
+      
+      // Trigger Chrome Desktop / Mobile System Notification
+      if (window.DQPush && typeof window.DQPush.showLocalSystemNotification === 'function') {
+        const price = (window.DQStore && window.DQStore.getJobPrice) ? window.DQStore.getJobPrice(updatedJob) : (updatedJob.price || 399);
+        window.DQPush.showLocalSystemNotification(
+          `🚨 ${updateType.toUpperCase()} #${updatedJob.id || 'DQ'}`,
+          `₹${price} • ${updatedJob.service || 'Graphic Design'} | "${updatedJob.project || updatedJob.projectName || 'Design Order'}". Click to open & claim work!`,
+          updatedJob.id,
+          price
+        );
+      }
     }
   };
 
@@ -417,6 +428,16 @@
               this.playNewJobChime(5);
               if (data.job) {
                 this.showNewJobBanner(data.job, data.type === "NEW_JOB" ? "New Job Alert" : "Job Updated");
+                if (window.DQPush && typeof window.DQPush.showLocalSystemNotification === 'function') {
+                  const job = data.job;
+                  const price = job.price || 399;
+                  window.DQPush.showLocalSystemNotification(
+                    `🚨 NEW ORDER #${job.id || 'DQ'}`,
+                    `₹${price} • ${job.service || 'Design'} | "${job.project || 'Design Work'}". Click to open!`,
+                    job.id,
+                    price
+                  );
+                }
               }
             }
           }

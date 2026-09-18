@@ -89,6 +89,8 @@
     <link rel="stylesheet" href="src/index.css" />
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="store.js"></script>
+    <script src="notification-sound.js"></script>
+    <script src="push-notifications.js"></script>
     <script type="module" src="/src/supabase-service.ts"></script>
     <script type="module" src="/src/agreement-service.ts"></script>
     <script type="module" src="/src/email-service.ts"></script>
@@ -105,10 +107,18 @@
         <span class="bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-mono font-bold whitespace-nowrap">Admin Operations</span>
       </div>
 
-      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        <button type="button" onclick="if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing your MP3 5 times...'); }" class="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-400/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm">
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+        <!-- Chrome Push Notification Status / Enable Button -->
+        <button type="button" id="dq-push-status-pill" onclick="if(window.DQPush) window.DQPush.requestPermissionAndSubscribe()" class="flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-400/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm" title="Enable Chrome Desktop & Mobile Push Notifications (Alerts even when tab is closed)">
+          <i data-lucide="bell-ring" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">🔔 Enable Push Alerts</span>
+          <span class="sm:hidden">Push Alerts</span>
+        </button>
+
+        <button type="button" onclick="if(window.DQPush) { window.DQPush.testNotificationWithChime(); } else if(window.DQSoundService) { window.DQSoundService.playNewJobChime(5); if(typeof showToast==='function') showToast('🔊 Playing sound alert 5 times...'); }" class="flex items-center gap-1.5 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-400/40 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm" title="Test Chrome Push Notification & 5x Chime Alert">
           <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
-          <span>🔊 Test MP3 Sound (5x)</span>
+          <span class="hidden sm:inline">🔊 Test Alert (5x)</span>
+          <span class="sm:hidden">Test (5x)</span>
         </button>
         <a href="index.html" class="text-xs text-slate-400 hover:text-white font-semibold hidden sm:inline">Public Site</a>
         <button id="admin-logout-btn" class="flex items-center gap-1.5 bg-rose-600/20 text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-bold transition-all">

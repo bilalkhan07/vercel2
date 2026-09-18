@@ -2385,24 +2385,19 @@ export const DQSupabase = {
         ? designer.password.toString().trim() 
         : '';
       const enteredPassTrim = enteredPass.trim();
-      const passMatch = Boolean(authUser) || 
-        (expectedPass && expectedPass === enteredPassTrim) || 
-        (expectedPass && expectedPass.toLowerCase() === enteredPassTrim.toLowerCase()) || 
-        (!expectedPass) || // If account was created without a password, allow access
-        (enteredPassTrim === '@Bilal@786') ||
-        (enteredPassTrim === 'Designer@123') ||
-        (enteredPassTrim === '7861') ||
-        (enteredPassTrim === '123456');
 
-      if (!passMatch) {
-        return { success: false, error: `Incorrect password for WhatsApp +91 ${phone10}.` };
+      if (!expectedPass && !authUser) {
+        return { 
+          success: false, 
+          error: `No password set for account +91 ${phone10}. Please click "Forgot Password?" to set your password.` 
+        };
       }
 
-      // If designer was missing password in database, save entered password
-      if (!expectedPass && enteredPassTrim) {
-        try {
-          supabase.from('designers').update({ password: enteredPassTrim }).eq('id', designer.id || phone10);
-        } catch (e) {}
+      const passMatch = Boolean(authUser) || 
+        (Boolean(expectedPass) && (expectedPass === enteredPassTrim || expectedPass.toLowerCase() === enteredPassTrim.toLowerCase()));
+
+      if (!passMatch) {
+        return { success: false, error: `Incorrect password entered for WhatsApp +91 ${phone10}.` };
       }
 
       // Check approval
