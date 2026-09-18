@@ -134,7 +134,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'High CTR Thumbnail',
     category: 'thumbnail',
     deliveryTime: '⚡ 25m Delivery',
-    image: 'portfolio-high-ctr-thumbnail.webp',
+    image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=700&auto=format&fit=crop&q=80',
     description: 'High-CTR YouTube thumbnail designed with bold visuals, strong hierarchy, and attention-grabbing composition to maximize viewer engagement.',
     client: 'CA Mohit Patidar'
   },
@@ -143,7 +143,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'Avir Vada Pav',
     category: 'branding',
     deliveryTime: '⚡ 1hr Delivery',
-    image: 'portfolio-avir-vada-pav.webp',
+    image: 'https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=700&auto=format&fit=crop&q=80',
     description: 'Custom logo designed for Avir Vada Pav, bringing the three family members together in a memorable and friendly brand identity.',
     client: 'Avir Jain'
   },
@@ -152,7 +152,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'Brest Pump Packaging',
     category: 'social',
     deliveryTime: '⚡ 1.5hr Delivery',
-    image: 'portfolio-brest-pump.webp',
+    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=700&auto=format&fit=crop&q=80',
     description: 'Professional breast pump packaging designed with a clean, modern, and trustworthy visual identity for a medical healthcare brand.',
     client: 'Aditya Ajmera'
   },
@@ -161,7 +161,7 @@ const DEFAULT_PORTFOLIO = [
     title: 'Malhaari Insta Grid',
     category: 'social',
     deliveryTime: '⚡ 30m Delivery',
-    image: 'portfolio-malhaari-insta-grid.webp',
+    image: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=700&auto=format&fit=crop&q=80',
     description: 'A visually engaging Instagram grid crafted to strengthen brand identity with clean, consistent, and modern creative direction.',
     client: 'Hiten Sharma'
   }
@@ -362,15 +362,94 @@ function initCloudReviewsSync() {
   }, 400);
 }
 
+// Background auto-listener for cloud portfolio sync across all pages
+function initCloudPortfolioSync() {
+  if (typeof window === 'undefined') return;
+  let attempts = 0;
+  let syncInitialized = false;
+
+  const setupPortfolioSync = () => {
+    if (syncInitialized) return;
+    const db = getCloudDb();
+    if (db && typeof db.fetchPortfolio === 'function') {
+      syncInitialized = true;
+      try {
+        if (typeof db.subscribePortfolio === 'function') {
+          db.subscribePortfolio((livePortfolio) => {
+            if (Array.isArray(livePortfolio) && livePortfolio.length > 0) {
+              localStorage.setItem('dq_portfolio_items', JSON.stringify(livePortfolio));
+              window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: livePortfolio }));
+            }
+          });
+        }
+        db.fetchPortfolio().then((livePortfolio) => {
+          if (Array.isArray(livePortfolio) && livePortfolio.length > 0) {
+            localStorage.setItem('dq_portfolio_items', JSON.stringify(livePortfolio));
+            window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: livePortfolio }));
+          }
+        }).catch(() => {});
+      } catch(e) {}
+    } else {
+      // Direct REST fallback for immediate Supabase sync
+      const supabaseUrl = 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
+      fetch(`${supabaseUrl}/rest/v1/portfolio?select=*`, {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`
+        }
+      })
+      .then(res => res.json())
+      .then(rows => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          const parsed = rows.map(d => {
+            let meta = {};
+            if (Array.isArray(d.tags)) {
+              d.tags.forEach(t => {
+                if (typeof t === 'string' && t.startsWith('{')) {
+                  try { meta = Object.assign(meta, JSON.parse(t)); } catch(e){}
+                }
+              });
+            }
+            return {
+              id: d.id,
+              title: d.title,
+              category: d.category,
+              deliveryTime: meta.deliveryTime || meta.delivery || (Array.isArray(d.tags) && d.tags[0]) || '⚡ 30m Delivery',
+              image: d.image,
+              description: meta.description || meta.desc || d.description || '',
+              client: meta.client || d.designer || 'Verified Client'
+            };
+          });
+          localStorage.setItem('dq_portfolio_items', JSON.stringify(parsed));
+          window.dispatchEvent(new CustomEvent('dq_portfolio_updated', { detail: parsed }));
+        }
+      })
+      .catch(() => {});
+    }
+  };
+
+  setupPortfolioSync();
+  const interval = setInterval(() => {
+    attempts++;
+    setupPortfolioSync();
+    if (syncInitialized || attempts > 20) {
+      clearInterval(interval);
+    }
+  }, 400);
+}
+
 if (typeof window !== 'undefined') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       initCloudServicesSync();
       initCloudReviewsSync();
+      initCloudPortfolioSync();
     });
   } else {
     initCloudServicesSync();
     initCloudReviewsSync();
+    initCloudPortfolioSync();
   }
 }
 
@@ -1474,6 +1553,269 @@ window.DQStore = {
     return fromCompletedJobs + extraEarnings;
   }
 };
+
+// =========================================================================
+// DESIGN QUIXO 3-4 SECOND NOTIFICATION CHIME & REALTIME SOUND ENGINE
+// Plays crystal-clear harmonic chime alert whenever a new job is uploaded
+// =========================================================================
+const DQSoundService = {
+  audioCtx: null,
+  isUnlocked: false,
+  knownJobIds: new Set(),
+  initializedWatcher: false,
+  soundEnabled: true,
+
+  getAudioContext() {
+    if (typeof window === 'undefined') return null;
+    if (!this.audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        this.audioCtx = new AudioContextClass();
+      }
+    }
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume().catch(() => {});
+    }
+    return this.audioCtx;
+  },
+
+  unlockAudio() {
+    if (this.isUnlocked) return;
+    const ctx = this.getAudioContext();
+    if (ctx) {
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(() => {
+          this.isUnlocked = true;
+        }).catch(() => {});
+      } else {
+        this.isUnlocked = true;
+      }
+    }
+  },
+
+  /**
+   * Plays a professional, rich harmonic notification chime lasting ~3.5 seconds
+   */
+  playNewJobChime() {
+    if (typeof window === 'undefined') return;
+    try {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      const now = ctx.currentTime;
+      
+      // Master filter for warm, rounded crystal tone (prevents harsh clicks)
+      const masterFilter = ctx.createBiquadFilter();
+      masterFilter.type = 'lowpass';
+      masterFilter.frequency.setValueAtTime(2600, now);
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.7, now);
+      masterFilter.connect(masterGain);
+      masterGain.connect(ctx.destination);
+
+      // Helper to synthesize a single resonant bell chime note
+      const playBellNote = (freq, startTime, duration = 0.8, volume = 0.25) => {
+        // Fundamental oscillator (Pure Sine)
+        const osc1 = ctx.createOscillator();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(freq, startTime);
+
+        // Harmonic overtone (Soft Triangle for body/richness)
+        const osc2 = ctx.createOscillator();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(freq * 2, startTime); // 1 octave overtone
+
+        // Amplitude Envelope (Fast attack, natural exponential decay)
+        const noteGain1 = ctx.createGain();
+        noteGain1.gain.setValueAtTime(0.0001, startTime);
+        noteGain1.gain.exponentialRampToValueAtTime(volume, startTime + 0.02);
+        noteGain1.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+        const noteGain2 = ctx.createGain();
+        noteGain2.gain.setValueAtTime(0.0001, startTime);
+        noteGain2.gain.exponentialRampToValueAtTime(volume * 0.35, startTime + 0.015);
+        noteGain2.gain.exponentialRampToValueAtTime(0.0001, startTime + (duration * 0.6));
+
+        osc1.connect(noteGain1);
+        noteGain1.connect(masterFilter);
+
+        osc2.connect(noteGain2);
+        noteGain2.connect(masterFilter);
+
+        osc1.start(startTime);
+        osc1.stop(startTime + duration);
+        osc2.start(startTime);
+        osc2.stop(startTime + duration);
+      };
+
+      // 3.5-SECOND MELODIC NOTIFICATION CHIME SEQUENCE
+      // Phrase 1: Ascending Attention Arpeggio (0.0s -> 1.2s)
+      playBellNote(523.25, now + 0.00, 0.70, 0.30); // C5
+      playBellNote(659.25, now + 0.28, 0.75, 0.35); // E5
+      playBellNote(783.99, now + 0.56, 0.85, 0.40); // G5
+      playBellNote(1046.50, now + 0.84, 1.10, 0.45); // C6
+
+      // Phrase 2: Bright Golden Chime Cadence with Sustained Decay (1.4s -> 3.6s)
+      playBellNote(659.25, now + 1.40, 0.70, 0.30); // E5
+      playBellNote(783.99, now + 1.68, 0.80, 0.35); // G5
+      playBellNote(1046.50, now + 1.96, 1.00, 0.45); // C6
+      playBellNote(1318.51, now + 2.24, 1.40, 0.55); // E6 (Sustained grand bell finish)
+      playBellNote(1567.98, now + 2.24, 1.20, 0.25); // G6 (Harmonic shimmer layer)
+
+    } catch (e) {
+      console.warn('[DQSoundService] Audio playback warning:', e);
+    }
+  },
+
+  /**
+   * Displays a vibrant floating banner toast when a new job arrives
+   */
+  showNewJobBanner(job) {
+    if (typeof document === 'undefined') return;
+    try {
+      const bannerId = 'dq-new-job-audio-toast';
+      let existing = document.getElementById(bannerId);
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.id = bannerId;
+      toast.className = 'fixed top-4 right-4 z-[99999] max-w-sm w-full bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border-2 border-emerald-400 flex items-start gap-3.5 transition-all duration-500 transform translate-y-0 animate-bounce';
+      
+      const jobId = job.id || 'NEW-JOB';
+      const proj = job.project || job.projectName || job.service || 'New Design Request';
+      const price = job.price || 399;
+
+      toast.innerHTML = `
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-400/40 text-lg">
+          🔔
+        </div>
+        <div class="flex-grow space-y-0.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[10px] font-mono font-bold bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full uppercase tracking-wider">New Job Alert</span>
+            <span class="text-[11px] font-extrabold text-emerald-400">₹${price}/-</span>
+          </div>
+          <h4 class="font-bold text-sm text-white truncate max-w-[200px]">${proj}</h4>
+          <p class="text-[11px] text-slate-300 font-mono">Job #${jobId} • Just Uploaded</p>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+          ✕
+        </button>
+      `;
+
+      document.body.appendChild(toast);
+
+      // Auto dismiss after 6 seconds
+      setTimeout(() => {
+        if (toast && toast.parentElement) {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(-10px)';
+          setTimeout(() => toast.remove(), 400);
+        }
+      }, 6000);
+    } catch(e) {}
+  },
+
+  /**
+   * Initializes background job change watcher on Admin or Designer Dashboard
+   */
+  initJobSoundWatcher(panelName = 'dashboard') {
+    if (typeof window === 'undefined') return;
+    if (this.initializedWatcher) return;
+    this.initializedWatcher = true;
+
+    // Attach user gesture listeners to unlock AudioContext immediately
+    const unlockHandler = () => {
+      this.unlockAudio();
+      window.removeEventListener('click', unlockHandler);
+      window.removeEventListener('keydown', unlockHandler);
+      window.removeEventListener('touchstart', unlockHandler);
+    };
+    window.addEventListener('click', unlockHandler, { once: true });
+    window.addEventListener('keydown', unlockHandler, { once: true });
+    window.addEventListener('touchstart', unlockHandler, { once: true });
+
+    // Seed initial known jobs without playing sound on cold load
+    try {
+      const initialJobs = JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
+      if (Array.isArray(initialJobs)) {
+        initialJobs.forEach(j => {
+          if (j && j.id) this.knownJobIds.add(j.id.toString().toUpperCase());
+        });
+      }
+    } catch(e) {}
+
+    // Check incoming job list for brand new jobs
+    const checkJobsForNewUploads = (jobsList) => {
+      if (!Array.isArray(jobsList) || jobsList.length === 0) return;
+
+      let foundNew = null;
+      jobsList.forEach(job => {
+        if (!job || !job.id) return;
+        const normId = job.id.toString().toUpperCase();
+        
+        // If not in known IDs
+        if (!this.knownJobIds.has(normId)) {
+          this.knownJobIds.add(normId);
+
+          const isPending = !job.completed && (!job.status || job.status.toLowerCase() === 'pending' || job.status.toLowerCase().includes('progress'));
+          // Only alert if job is active and created recently (within last 30 minutes)
+          let isRecent = true;
+          if (job.createdAt) {
+            const ageMs = Date.now() - new Date(job.createdAt).getTime();
+            if (ageMs > 30 * 60 * 1000) isRecent = false;
+          }
+
+          if (isPending && isRecent) {
+            foundNew = job;
+          }
+        }
+      });
+
+      if (foundNew && this.soundEnabled) {
+        console.log(`[DQSoundService] 🔔 New Job Upload detected (#${foundNew.id}) in ${panelName}! Playing 3-4s chime...`);
+        this.playNewJobChime();
+        this.showNewJobBanner(foundNew);
+      }
+    };
+
+    // Listen to all custom job broadcast events across the entire app
+    window.addEventListener('dq_jobs_updated', (e) => {
+      const jobs = (e && e.detail) ? e.detail : JSON.parse(localStorage.getItem('dq_live_jobs') || '[]');
+      checkJobsForNewUploads(jobs);
+    });
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'dq_live_jobs') {
+        try {
+          const jobs = JSON.parse(e.newValue || '[]');
+          checkJobsForNewUploads(jobs);
+        } catch(err) {}
+      }
+    });
+
+    // Also auto-hook into Supabase Realtime if active
+    const hookSupabase = () => {
+      const db = window.DQSupabase || window.DQFirebase;
+      if (db && typeof db.subscribeJobs === 'function') {
+        db.subscribeJobs((liveJobs) => {
+          checkJobsForNewUploads(liveJobs);
+        });
+      }
+    };
+    hookSupabase();
+    setTimeout(hookSupabase, 1500);
+  }
+};
+
+if (typeof window !== 'undefined') {
+  window.DQSoundService = DQSoundService;
+  window.DQSound = DQSoundService;
+  window.playNewJobChime = () => DQSoundService.playNewJobChime();
+}
 
 // Immediate self-cleanup of legacy demo jobs & deleted jobs sync
 (function() {
