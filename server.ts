@@ -483,6 +483,7 @@ async function startServer() {
 
   // Mount API Middleware
   app.use(async (req, res, next) => {
+    const reqPath = (req.path || req.url || '').split('?')[0].replace(/\/$/, '');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -620,7 +621,7 @@ async function startServer() {
     }
 
     // --- SECURE AUTHENTICATION VERIFICATION ROUTE (NO CREDENTIALS IN FRONTEND) ---
-    if (req.url === '/api/verify-login-credentials' && req.method === 'POST') {
+    if ((reqPath === '/api/verify-login-credentials' || req.url === '/api/verify-login-credentials') && req.method === 'POST') {
       let body = '';
       req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
       req.on('end', async () => {
