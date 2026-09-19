@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     );
 
     if (isAdminIdentifier) {
-      const isPassCorrect = (cleanPass === '@Bilal@786' || cleanPass === '7861');
+      const isPassCorrect = (cleanPass === '@Bilal@786' || cleanPass === 'Bilal#0897' || cleanPass === '@Bilal@777');
       if (!isPassCorrect) {
         return res.status(401).json({
           success: false,
@@ -80,48 +80,14 @@ export default async function handler(req, res) {
       console.warn('[verify-login-credentials PostgreSQL notice]:', sqlErr?.message);
     }
 
-    // Fallback known active designers
-    if (!designer) {
-      if (cleanIdent === 'uzefbilal786@gmail.com' || cleanPhoneDigits === '8602420897') {
-        designer = {
-          id: '8602420897',
-          name: 'Uzef Bilal',
-          phone: '8602420897',
-          email: 'uzefbilal786@gmail.com',
-          role: 'designer',
-          status: 'Approved',
-          password: '7861',
-          pin: '7861'
-        };
-      } else if (cleanIdent === 'chunouti09@gmail.com' || cleanPhoneDigits === '8982325391') {
-        designer = {
-          id: '8982325391',
-          name: 'Chunouti Agrawal',
-          phone: '8982325391',
-          email: 'chunouti09@gmail.com',
-          role: 'designer',
-          status: 'Approved',
-          password: '7861',
-          pin: '7861'
-        };
-      } else if (cleanIdent === 'hr.tasksource.khushboo@gmail.com' || cleanPhoneDigits === '9893861325') {
-        designer = {
-          id: '9893861325',
-          name: 'Uzef Khan',
-          phone: '9893861325',
-          email: 'hr.tasksource.khushboo@gmail.com',
-          role: 'designer',
-          status: 'Approved',
-          password: '7861',
-          pin: '7861'
-        };
-      }
+    if (!designer && localBackup) {
+      designer = localBackup;
     }
 
     if (!designer) {
       return res.status(401).json({
         success: false,
-        message: 'No designer account found for this mobile/email. Please register your account.'
+        message: 'No designer account found for this mobile/email. Please check your credentials or register.'
       });
     }
 
@@ -132,13 +98,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const storedPass = (designer.password || designer.pin || '7861').toString().trim();
-    const isPassValid = (storedPass === cleanPass || storedPass.toLowerCase() === cleanPass.toLowerCase() || cleanPass === '7861');
+    const storedPass = (designer.password || designer.pin || '').toString().trim();
+    const isPassValid = storedPass ? (storedPass === cleanPass || storedPass.toLowerCase() === cleanPass.toLowerCase()) : false;
 
     if (!isPassValid) {
       return res.status(401).json({
         success: false,
-        message: 'Incorrect password entered.'
+        message: 'Incorrect password entered. Please enter the password you set during registration.'
       });
     }
 
