@@ -1349,26 +1349,42 @@
                 const db = window.DQSupabase || window.DQFirebase;
                 const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
                 const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
-                
-                let filter = '';
-                if (cleanIdent.includes('@')) {
-                  filter = `or=(email.eq.${encodeURIComponent(cleanIdent)},identifier.eq.${encodeURIComponent(cleanIdent)})`;
-                } else if (cleanPhoneDigits && cleanPhoneDigits.length === 10) {
-                  filter = `or=(phone.ilike.%${cleanPhoneDigits},id.eq.${cleanPhoneDigits},identifier.ilike.%${cleanPhoneDigits})`;
-                } else {
-                  filter = `or=(id.eq.${encodeURIComponent(cleanIdent)},identifier.eq.${encodeURIComponent(cleanIdent)})`;
-                }
+                const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` };
 
-                if (filter) {
-                  const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/designers?${filter}&select=*`, {
-                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-                  });
-                  if (sbRes.ok) {
-                    const sbRows = await sbRes.json();
-                    if (Array.isArray(sbRows) && sbRows.length > 0) {
-                      found = sbRows[0];
+                let sbRows = [];
+                if (cleanIdent.includes('@')) {
+                  const res = await fetch(`${SUPABASE_URL}/rest/v1/designers?email=eq.${encodeURIComponent(cleanIdent)}&select=*`, { headers });
+                  if (res.ok) sbRows = await res.json().catch(() => []);
+                }
+                if ((!sbRows || sbRows.length === 0) && cleanPhoneDigits && cleanPhoneDigits.length === 10) {
+                  const res = await fetch(`${SUPABASE_URL}/rest/v1/designers?phone=eq.${encodeURIComponent(cleanPhoneDigits)}&select=*`, { headers });
+                  if (res.ok) sbRows = await res.json().catch(() => []);
+                }
+                if (!sbRows || sbRows.length === 0) {
+                  const res = await fetch(`${SUPABASE_URL}/rest/v1/designers?id=eq.${encodeURIComponent(cleanIdent)}&select=*`, { headers });
+                  if (res.ok) sbRows = await res.json().catch(() => []);
+                }
+                if (!sbRows || sbRows.length === 0) {
+                  const res = await fetch(`${SUPABASE_URL}/rest/v1/designers?select=*`, { headers });
+                  if (res.ok) {
+                    const allRows = await res.json().catch(() => []);
+                    if (Array.isArray(allRows)) {
+                      sbRows = allRows.filter(d => {
+                        if (!d) return false;
+                        const dEmail = (d.email || d.identifier || '').toLowerCase().trim();
+                        const dPhone = (d.phone || d.whatsapp || d.identifier || d.id || '').toString().replace(/\D/g, '').slice(-10);
+                        const dId = (d.id || '').toString().toLowerCase().trim();
+                        if (dEmail && dEmail === cleanIdent) return true;
+                        if (cleanPhoneDigits && cleanPhoneDigits.length === 10 && dPhone && dPhone === cleanPhoneDigits) return true;
+                        if (dId && dId === cleanIdent) return true;
+                        return false;
+                      });
                     }
                   }
+                }
+
+                if (Array.isArray(sbRows) && sbRows.length > 0) {
+                  found = sbRows[0];
                 }
               } catch (sbErr) {
                 console.warn('Realtime Supabase fallback error:', sbErr);
