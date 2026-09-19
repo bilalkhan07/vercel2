@@ -573,15 +573,12 @@ async function startServer() {
           const cleanPhone = (phone || '').toString().replace(/\D/g, '').slice(-10);
 
           try {
-            if (cleanOld) {
-              await serverSupabase.from('designers').update({ email: cleanNew, identifier: cleanNew }).eq('email', cleanOld);
-            }
-            if (cleanPhone) {
-              await serverSupabase.from('designers').update({ email: cleanNew, identifier: cleanNew }).eq('phone', cleanPhone);
-              await serverSupabase.from('designers').update({ email: cleanNew, identifier: cleanNew }).eq('id', cleanPhone);
-            }
+            await pgPool.query(
+              `UPDATE designers SET email = $1, identifier = $1 WHERE LOWER(email) = LOWER($2) OR id = $3 OR phone = $3`,
+              [cleanNew, cleanOld, cleanPhone]
+            );
           } catch (dbErr) {
-            console.warn('[DB Email update notice]:', dbErr);
+            console.warn('[Cloud SQL Email update notice]:', dbErr);
           }
 
           res.setHeader('Content-Type', 'application/json');
@@ -592,6 +589,79 @@ async function startServer() {
           return res.end(JSON.stringify({ success: false, message: err.message || 'Error updating email' }));
         }
       });
+      return;
+    }
+
+    // --- GET DESIGNERS ROUTE ---
+    if ((reqPath === '/api/get-designers' || req.url === '/api/get-designers') && (req.method === 'GET' || req.method === 'POST')) {
+      (async () => {
+        try {
+          let designers: any[] = [];
+          try {
+            const sqlRes = await pgPool.query('SELECT * FROM designers ORDER BY created_at DESC');
+            if (sqlRes && sqlRes.rows) designers = sqlRes.rows;
+          } catch (e: any) {
+            console.warn('[Cloud SQL get-designers notice]:', e?.message);
+          }
+
+          const knownCore = [
+            {
+              id: 'uzefbilal786@gmail.com',
+              name: 'Uzef Bilal',
+              phone: '8602420897',
+              email: 'uzefbilal786@gmail.com',
+              identifier: 'uzefbilal786@gmail.com',
+              password: '7861',
+              pin: '7861',
+              portfolio: 'https://www.behance.net/bilalkhan829',
+              skills: 'Graphic Design, Photoshop, Illustrator',
+              status: 'Approved',
+              role: 'designer'
+            },
+            {
+              id: '8982325391',
+              name: 'Chunouti Agrawal',
+              phone: '8982325391',
+              email: 'chunouti09@gmail.com',
+              identifier: 'chunouti09@gmail.com',
+              password: '7861',
+              pin: '7861',
+              portfolio: 'https://www.behance.net/gallery/248388645/Portfolio',
+              skills: 'Photoshop, Illustrator',
+              status: 'Approved',
+              role: 'designer'
+            },
+            {
+              id: '9893861325',
+              name: 'Uzef Khan',
+              phone: '9893861325',
+              email: 'hr.tasksource.khushboo@gmail.com',
+              identifier: 'hr.tasksource.khushboo@gmail.com',
+              password: '7861',
+              pin: '7861',
+              portfolio: 'https://www.behance.net/bilalkhan829',
+              skills: 'Illustrator, Vector Art',
+              status: 'Approved',
+              role: 'designer'
+            }
+          ];
+
+          knownCore.forEach(core => {
+            const exists = (designers || []).some(d =>
+              (d.email && d.email.toLowerCase() === core.email.toLowerCase()) ||
+              (d.id && d.id.toString() === core.id)
+            );
+            if (!exists) designers.push(core);
+          });
+
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ success: true, designers }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ success: false, message: err.message || 'Error loading designers' }));
+        }
+      })();
       return;
     }
 
@@ -624,18 +694,8 @@ async function startServer() {
                  OR (phone IS NOT NULL AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $3);
             `;
             await pgPool.query(sqlQuery, [cleanPass, cleanKey, phone10 || 'NONE']);
-
-            // Update in Supabase
-            if (isEmail) {
-              await serverSupabase.from('designers').update({ password: cleanPass }).eq('email', cleanKey.toLowerCase());
-              await serverSupabase.from('designers').update({ password: cleanPass }).eq('identifier', cleanKey.toLowerCase());
-            }
-            if (phone10 && phone10.length === 10) {
-              await serverSupabase.from('designers').update({ password: cleanPass }).eq('phone', phone10);
-              await serverSupabase.from('designers').update({ password: cleanPass }).eq('id', phone10);
-            }
           } catch (dbErr) {
-            console.warn('[DB Password update notice]:', dbErr);
+            console.warn('[PostgreSQL Password update notice]:', dbErr);
           }
 
           res.setHeader('Content-Type', 'application/json');
@@ -772,31 +832,7 @@ async function startServer() {
             console.warn('[Cloud SQL Auth query notice]:', sqlErr?.message);
           }
 
-          // 3. Fallback: Query Supabase if Cloud SQL returned no result
-          if (!designer) {
-            try {
-              const { data } = await serverSupabase.from('designers').select('*');
-              if (Array.isArray(data) && data.length > 0) {
-                designer = data.find((d: any) => {
-                  if (!d) return false;
-                  const dEmail = (d.email || d.identifier || '').toString().toLowerCase().trim();
-                  const dPhone = (d.phone || d.whatsapp || d.id || '').toString().replace(/\D/g, '').slice(-10);
-                  const rawDbId = (d.id || '').toString().toLowerCase().trim();
-
-                  if (lowerId.includes('@')) {
-                    return dEmail === lowerId || rawDbId === lowerId;
-                  } else if (cleanPhone && cleanPhone.length === 10) {
-                    return dPhone === cleanPhone || rawDbId === cleanPhone;
-                  }
-                  return rawDbId === lowerId || dEmail === lowerId;
-                });
-              }
-            } catch (sbErr: any) {
-              console.warn('[Supabase Auth query notice]:', sbErr?.message);
-            }
-          }
-
-          // 4. Fallback: Check localBackup
+          // 3. Fallback: Check localBackup
           if (!designer && localBackup) {
             try {
               const regList = Array.isArray(localBackup.registered) ? localBackup.registered : [];
@@ -822,7 +858,7 @@ async function startServer() {
                   phone: cleanPhone || matchedLocal.phone || '',
                   email: lowerId.includes('@') ? lowerId : (matchedLocal.email || ''),
                   identifier: lowerId.includes('@') ? lowerId : (matchedLocal.identifier || cleanPhone),
-                  password: matchedLocal.password || matchedLocal.pin || '7861',
+                  password: matchedLocal.password || matchedLocal.pin || '',
                   portfolio: matchedLocal.portfolio || '',
                   skills: matchedLocal.skills || 'Graphic Design',
                   status: matchedLocal.status || 'Approved',
@@ -839,7 +875,7 @@ async function startServer() {
             res.setHeader('Content-Type', 'application/json');
             return res.end(JSON.stringify({
               success: false,
-              message: 'Incorrect password or unregistered account. Please check your details.'
+              message: 'Incorrect password or unregistered account. Please check your details or register.'
             }));
           }
 
@@ -849,23 +885,14 @@ async function startServer() {
             return res.end(JSON.stringify({ success: false, message: 'Account has been revoked by the platform administrator.' }));
           }
 
-          // STRICT PASSWORD VALIDATION
+          // PASSWORD VALIDATION (Must match designer registered password or PIN)
           const storedPass = (designer.password || designer.pin || '').toString().trim();
-          if (!storedPass) {
-            res.statusCode = 401;
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({
-              success: false,
-              message: 'No password is set for this creator account. Please click "Forgot Password?" to reset your password.'
-            }));
-          }
-
-          const isPassValid = (storedPass === enteredPass || storedPass.toLowerCase() === enteredPass.toLowerCase());
+          const isPassValid = storedPass ? (storedPass === enteredPass || storedPass.toLowerCase() === enteredPass.toLowerCase()) : false;
 
           if (!isPassValid) {
             res.statusCode = 401;
             res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: false, message: 'Incorrect password entered. Please check your password.' }));
+            return res.end(JSON.stringify({ success: false, message: 'Incorrect password entered. Please enter the password you set during registration.' }));
           }
 
           const rawTargetEmail = (designer.email || (designer.identifier && designer.identifier.includes('@') ? designer.identifier : '') || (lowerId.includes('@') ? lowerId : '')).toString().trim();
@@ -957,12 +984,10 @@ async function startServer() {
                 }
               });
 
-              // 1b. Fetch ONLY active Approved designers from Supabase (NEVER query login_history for recipients)
+              // 1b. Fetch ONLY active Approved designers from Cloud SQL PostgreSQL
               try {
-                const { data: dbDesigners, error } = await serverSupabase
-                  .from('designers')
-                  .select('*')
-                  .eq('status', 'Approved');
+                const sqlRes = await pgPool.query("SELECT * FROM designers WHERE status = 'Approved'");
+                const dbDesigners = sqlRes.rows || [];
 
                 if (dbDesigners && Array.isArray(dbDesigners)) {
                   dbDesigners.forEach((d: any) => {
@@ -978,7 +1003,7 @@ async function startServer() {
                   });
                 }
               } catch (e) {
-                console.warn('[BROADCAST NEW JOB] Supabase designers fetch notice:', e);
+                console.warn('[BROADCAST NEW JOB] PostgreSQL designers fetch notice:', e);
               }
 
               // 1c. Add any extra raw emails passed from client if not blacklisted
@@ -1064,15 +1089,15 @@ async function startServer() {
                 .catch(e => console.warn(`[Fast SMTP Error] ${cleanEmail}:`, e?.message));
 
               // 3. Clean up any previous OTP for this email, then insert new OTP in background
-              Promise.resolve(serverSupabase.from('login_history').delete().eq('phone', cleanEmail).eq('role', 'otp_verification')).catch(() => {});
-              Promise.resolve(serverSupabase.from('login_history').insert({
-                id: `otp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                phone: cleanEmail,
-                name: cleanName || 'User',
-                role: 'otp_verification',
-                status: dynamicCode,
-                timestamp: new Date(Date.now() + 10 * 60 * 1000).toISOString()
-              })).catch(() => {});
+              pgPool.query(
+                `DELETE FROM login_history WHERE phone = $1 AND role = 'otp_verification'`,
+                [cleanEmail]
+              ).catch(() => {});
+
+              pgPool.query(
+                `INSERT INTO login_history (id, phone, name, role, status, timestamp) VALUES ($1, $2, $3, 'otp_verification', $4, $5)`,
+                [`otp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, cleanEmail, cleanName || 'User', dynamicCode, new Date(Date.now() + 10 * 60 * 1000).toISOString()]
+              ).catch(() => {});
 
               // 4. Return instant response (< 50ms) so user UI transitions immediately
               res.setHeader('Content-Type', 'application/json');
@@ -1127,21 +1152,18 @@ async function startServer() {
                 }
               }
 
-              // 2. Query latest OTP stored in Supabase login_history table
+              // 2. Query latest OTP stored in PostgreSQL login_history table
               try {
-                const { data: logs } = await serverSupabase
-                  .from('login_history')
-                  .select('*')
-                  .eq('phone', cleanEmail)
-                  .eq('role', 'otp_verification')
-                  .order('created_at', { ascending: false })
-                  .limit(1);
+                const { rows: logs } = await pgPool.query(
+                  `SELECT * FROM login_history WHERE phone = $1 AND role = 'otp_verification' ORDER BY timestamp DESC LIMIT 1;`,
+                  [cleanEmail]
+                );
 
                 if (logs && logs.length > 0) {
                   const latest = logs[0];
                   const expiresAt = new Date(latest.timestamp).getTime();
                   if (!isNaN(expiresAt) && Date.now() <= expiresAt && latest.status === cleanCode) {
-                    Promise.resolve(serverSupabase.from('login_history').delete().eq('id', latest.id)).catch(() => {});
+                    pgPool.query(`DELETE FROM login_history WHERE id = $1`, [latest.id]).catch(() => {});
                     res.setHeader('Content-Type', 'application/json');
                     return res.end(JSON.stringify({
                       success: true,
@@ -1150,7 +1172,7 @@ async function startServer() {
                   }
                 }
               } catch (dbErr) {
-                console.warn('DB OTP verify lookup notice:', dbErr);
+                console.warn('[PostgreSQL OTP verify lookup notice]:', dbErr);
               }
 
               // 3. If neither memory store nor DB matched, code is invalid or expired
@@ -1367,35 +1389,45 @@ async function startServer() {
                 agreementsigneddate: dateStr
               };
 
-              const { data: upsertData, error: upsertErr } = await serverSupabase
-                .from('designers')
-                .upsert(designerRow);
+              // PostgreSQL Cloud SQL persistence
+              const sqlQuery = `
+                INSERT INTO designers (
+                  id, name, phone, email, identifier, password, pin, portfolio, skills, status, role, avatar, avatar_url, date, signature, signaturedataurl, agreementsigned, agreementsigneddate, created_at
+                ) VALUES (
+                  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'designer', $11, $12, $13, $14, $15, true, $16, CURRENT_TIMESTAMP
+                ) ON CONFLICT (id) DO UPDATE SET
+                  name = EXCLUDED.name,
+                  phone = EXCLUDED.phone,
+                  email = EXCLUDED.email,
+                  identifier = EXCLUDED.identifier,
+                  password = COALESCE(EXCLUDED.password, designers.password),
+                  pin = COALESCE(EXCLUDED.pin, designers.pin),
+                  portfolio = EXCLUDED.portfolio,
+                  skills = EXCLUDED.skills,
+                  status = EXCLUDED.status,
+                  signature = EXCLUDED.signature,
+                  signaturedataurl = EXCLUDED.signaturedataurl;
+              `;
 
-              if (upsertErr) {
-                console.warn('[SERVER /api/register-designer] Supabase upsert notice:', upsertErr.message);
-              }
+              await pgPool.query(sqlQuery, [
+                primaryId, name, clean10, cleanEmail, cleanEmail || clean10, pass, pass,
+                portfolio, skills, status, payload.avatar || payload.photo || '', payload.avatar || payload.photo || '',
+                dateStr, sigDataUrl, sigDataUrl, dateStr
+              ]);
 
               // Save registration audit log & signature record in login_history
               try {
-                await serverSupabase.from('login_history').insert({
-                  id: `reg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-                  phone: clean10 || cleanEmail,
-                  name: name,
-                  role: 'designer',
-                  status: `Designer Registered (${status}) - Email: ${cleanEmail || 'None'} - Phone: +91 ${clean10} - Portfolio: ${portfolio || 'None'} - Skills: ${skills}`,
-                  timestamp: nowIso
-                });
+                await pgPool.query(
+                  `INSERT INTO login_history (id, phone, name, role, status, timestamp) VALUES ($1, $2, $3, 'designer', $4, CURRENT_TIMESTAMP)`,
+                  [`reg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, clean10 || cleanEmail, name, `Designer Registered (${status}) - Email: ${cleanEmail || 'None'} - Phone: +91 ${clean10}`]
+                );
 
                 if (sigDataUrl) {
                   const sigLogId = clean10 ? `sig-${clean10}` : `sig-${cleanEmail}`;
-                  await serverSupabase.from('login_history').insert({
-                    id: sigLogId,
-                    phone: clean10 || cleanEmail,
-                    name: name,
-                    role: 'signed_agreement',
-                    status: sigDataUrl,
-                    timestamp: nowIso
-                  });
+                  await pgPool.query(
+                    `INSERT INTO login_history (id, phone, name, role, status, timestamp) VALUES ($1, $2, $3, 'signed_agreement', $4, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status`,
+                    [sigLogId, clean10 || cleanEmail, name, sigDataUrl]
+                  );
                 }
               } catch (logErr) {
                 console.warn('[SERVER /api/register-designer] login_history notice:', logErr);
@@ -1435,38 +1467,18 @@ async function startServer() {
 
               const clean10 = cleanKey.replace(/\D/g, '').slice(-10);
 
-              // Update Supabase by id, phone, or email
-              const updatePayload: any = { 
-                status: newStatus,
-                isapproved: newStatus === 'Approved'
-              };
-              if (newStatus === 'Approved') {
-                updatePayload.approvedat = new Date().toISOString();
-              }
-
-              const updateTasks = [
-                Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('id', cleanKey))
-              ];
-              if (clean10 && clean10.length === 10) {
-                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('id', clean10)));
-                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('phone', clean10)));
-              }
-              if (cleanKey.includes('@')) {
-                updateTasks.push(Promise.resolve(serverSupabase.from('designers').update(updatePayload).eq('email', cleanKey)));
-              }
-
-              await Promise.allSettled(updateTasks);
+              // Update PostgreSQL by id, phone, or email
+              await pgPool.query(
+                `UPDATE designers SET status = $1 WHERE id = $2 OR LOWER(email) = LOWER($2) OR (phone IS NOT NULL AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $3);`,
+                [newStatus, cleanKey, clean10]
+              );
 
               // Log status change in login_history
               try {
-                await serverSupabase.from('login_history').insert({
-                  id: `status-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-                  phone: clean10 || cleanKey,
-                  name: `Designer ${cleanKey}`,
-                  role: 'designer',
-                  status: `Admin updated status to: ${newStatus}`,
-                  timestamp: new Date().toISOString()
-                });
+                await pgPool.query(
+                  `INSERT INTO login_history (id, phone, name, role, status, timestamp) VALUES ($1, $2, $3, 'designer', $4, CURRENT_TIMESTAMP)`,
+                  [`status-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, clean10 || cleanKey, `Designer ${cleanKey}`, `Admin updated status to: ${newStatus}`]
+                );
               } catch (logErr) {}
 
               // If status is Approved, automatically trigger Approval Email!
@@ -1475,12 +1487,12 @@ async function startServer() {
                   let targetEmail = (payload.email || '').trim().toLowerCase();
                   let designerName = (payload.name || '').trim();
 
-                  // If email was not passed in request body, look it up in Supabase
+                  // If email was not passed in request body, look it up in Cloud SQL
                   if (!targetEmail || !targetEmail.includes('@')) {
-                    const { data: dRows } = await serverSupabase
-                      .from('designers')
-                      .select('*')
-                      .or(`id.eq.${cleanKey},phone.eq.${clean10 || cleanKey}`);
+                    const { rows: dRows } = await pgPool.query(
+                      `SELECT * FROM designers WHERE id = $1 OR LOWER(email) = LOWER($1) OR (phone IS NOT NULL AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $2) LIMIT 1;`,
+                      [cleanKey, clean10]
+                    );
                     if (dRows && dRows.length > 0) {
                       const dRow = dRows[0];
                       if (dRow.email && dRow.email.includes('@')) {
@@ -1579,14 +1591,7 @@ async function startServer() {
             }
 
             if (!rawDesignersList || rawDesignersList.length === 0) {
-              const { data, error } = await serverSupabase
-                .from('designers')
-                .select('*');
-
-              if (error) {
-                console.warn('[SERVER /api/get-designers Supabase notice]:', error.message);
-              }
-              rawDesignersList = Array.isArray(data) ? data : [];
+              rawDesignersList = [];
             }
 
             const designersList = rawDesignersList.filter(d => {
@@ -1638,43 +1643,19 @@ async function startServer() {
               // 2. Invalidate cached designers memory
               cachedDesignersData = null;
 
-              // 3. Delete from Supabase 'designers' table across all matching keys
-              const delTasks: Promise<any>[] = [];
-              if (cleanEmail) {
-                delTasks.push(
-                  Promise.resolve(serverSupabase.from('designers').delete().eq('email', cleanEmail)),
-                  Promise.resolve(serverSupabase.from('designers').delete().eq('identifier', cleanEmail)),
-                  Promise.resolve(serverSupabase.from('designers').delete().eq('id', cleanEmail))
+              // 3. Delete from PostgreSQL 'designers' and 'login_history' tables
+              try {
+                await pgPool.query(
+                  `DELETE FROM designers WHERE LOWER(email) = LOWER($1) OR id = $2 OR (phone IS NOT NULL AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $3);`,
+                  [cleanEmail, rawId, cleanPhone]
                 );
-              }
-              if (cleanPhone) {
-                delTasks.push(
-                  Promise.resolve(serverSupabase.from('designers').delete().eq('phone', cleanPhone)),
-                  Promise.resolve(serverSupabase.from('designers').delete().eq('identifier', cleanPhone)),
-                  Promise.resolve(serverSupabase.from('designers').delete().eq('id', cleanPhone))
+                await pgPool.query(
+                  `DELETE FROM login_history WHERE phone = $1 OR phone = $2 OR id = $3;`,
+                  [cleanEmail, cleanPhone, rawId]
                 );
+              } catch (delErr) {
+                console.warn('[PostgreSQL delete-designer notice]:', delErr);
               }
-              if (rawId && rawId !== cleanEmail && rawId !== cleanPhone) {
-                delTasks.push(
-                  Promise.resolve(serverSupabase.from('designers').delete().eq('id', rawId))
-                );
-              }
-
-              // 4. Delete from Supabase 'login_history' so old records never resurrect this designer or send job emails
-              if (cleanEmail) {
-                delTasks.push(
-                  Promise.resolve(serverSupabase.from('login_history').delete().eq('phone', cleanEmail)),
-                  Promise.resolve(serverSupabase.from('login_history').delete().eq('id', cleanEmail))
-                );
-              }
-              if (cleanPhone) {
-                delTasks.push(
-                  Promise.resolve(serverSupabase.from('login_history').delete().eq('phone', cleanPhone)),
-                  Promise.resolve(serverSupabase.from('login_history').delete().eq('id', cleanPhone))
-                );
-              }
-
-              await Promise.allSettled(delTasks);
 
               setNoCacheHeaders(res);
               return res.end(JSON.stringify({
@@ -1696,14 +1677,15 @@ async function startServer() {
           req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
           req.on('end', async () => {
             try {
-              const { id } = JSON.parse(body || '{}');
-              if (!id) {
+              const parsed = JSON.parse(body || '{}');
+              const targetId = parsed.id || parsed.jobId;
+              if (!targetId) {
                 res.statusCode = 400;
                 setNoCacheHeaders(res);
                 return res.end(JSON.stringify({ success: false, message: 'Missing job id' }));
               }
 
-              const rawId = id.toString().trim();
+              const rawId = targetId.toString().trim();
               const bareId = rawId.replace(/^(DQ[-_]?)+/i, '');
               const cleanId = `DQ-${bareId}`;
 
@@ -1718,17 +1700,13 @@ async function startServer() {
               // Invalidate cached jobs memory
               cachedJobsData = null;
 
-              // Delete from Supabase jobs table
-              const delTasks = [
-                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', cleanId)),
-                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', bareId)),
-                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', `DQ${bareId}`)),
-                Promise.resolve(serverSupabase.from('jobs').delete().eq('id', rawId)),
-                Promise.resolve(serverSupabase.from('jobs').update({ status: 'Deleted' }).eq('id', cleanId)),
-                Promise.resolve(serverSupabase.from('jobs').update({ status: 'Deleted' }).eq('id', bareId))
-              ];
-
-              await Promise.allSettled(delTasks);
+              // Delete from PostgreSQL jobs table
+              try {
+                await pgPool.query(`UPDATE jobs SET status = 'Deleted' WHERE id = $1 OR id = $2 OR id = $3;`, [cleanId, bareId, rawId]);
+                await pgPool.query(`DELETE FROM jobs WHERE id = $1 OR id = $2 OR id = $3;`, [cleanId, bareId, rawId]);
+              } catch (delErr) {
+                console.warn('[PostgreSQL delete-job notice]:', delErr);
+              }
 
               setNoCacheHeaders(res);
               return res.end(JSON.stringify({
@@ -1753,17 +1731,14 @@ async function startServer() {
               return res.end(JSON.stringify({ success: true, jobs: cachedJobsData, cached: true }));
             }
 
-            const { data, error } = await serverSupabase
-              .from('jobs')
-              .select('*')
-              .neq('status', 'Deleted')
-              .order('createdat', { ascending: false });
-
-            if (error) {
-              console.warn('[SERVER /api/get-jobs notice]:', error.message);
+            let rawList: any[] = [];
+            try {
+              const sqlRes = await pgPool.query(`SELECT * FROM jobs WHERE status IS NULL OR status != 'Deleted' ORDER BY createdat DESC, created_at DESC;`);
+              rawList = sqlRes.rows || [];
+            } catch (sqlErr: any) {
+              console.warn('[PostgreSQL /api/get-jobs error]:', sqlErr?.message);
             }
 
-            const rawList = Array.isArray(data) ? data : [];
             const activeJobs = rawList.filter(j => {
               if (!j) return false;
               if (j.status === 'Deleted') return false;
@@ -1825,9 +1800,34 @@ async function startServer() {
                 time: job.time || 'Just now'
               };
 
-              const { error } = await serverSupabase.from('jobs').upsert(row);
-              if (error) {
-                console.warn('[SERVER /api/save-job Supabase notice]:', error.message);
+              try {
+                const upsertSql = `
+                  INSERT INTO jobs (
+                    id, service, project, price, brief, phone, whatsapp, ratio, referenceimage, status, acceptedby, completed, completed_at, createdat, time
+                  ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+                  ) ON CONFLICT (id) DO UPDATE SET
+                    service = EXCLUDED.service,
+                    project = EXCLUDED.project,
+                    price = EXCLUDED.price,
+                    brief = EXCLUDED.brief,
+                    phone = EXCLUDED.phone,
+                    whatsapp = EXCLUDED.whatsapp,
+                    ratio = EXCLUDED.ratio,
+                    referenceimage = EXCLUDED.referenceimage,
+                    status = EXCLUDED.status,
+                    acceptedby = EXCLUDED.acceptedby,
+                    completed = EXCLUDED.completed,
+                    completed_at = EXCLUDED.completed_at,
+                    time = EXCLUDED.time;
+                `;
+                await pgPool.query(upsertSql, [
+                  cleanId, row.service, row.project, row.price, row.brief, row.phone, row.whatsapp,
+                  row.ratio, row.referenceimage, row.status, JSON.stringify(row.acceptedby), row.completed,
+                  row.completedat, row.createdat, row.time
+                ]);
+              } catch (saveErr) {
+                console.warn('[PostgreSQL /api/save-job error]:', saveErr);
               }
 
               // Instant Push Broadcast to all registered Chrome browser devices (5x alert sound + vibration)
@@ -1855,6 +1855,47 @@ async function startServer() {
               res.statusCode = 500;
               setNoCacheHeaders(res);
               return res.end(JSON.stringify({ success: false, message: err.message || 'Error saving job' }));
+            }
+          });
+          return;
+        }
+
+        // --- UPDATE JOB STATUS API ROUTE (DIRECT POSTGRESQL) ---
+        if (req.url === '/api/update-job-status' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+          req.on('end', async () => {
+            try {
+              const { jobId, status, acceptedBy, completed, completedAt, referenceImage } = JSON.parse(body || '{}');
+              const rawId = (jobId || '').toString().trim();
+              const bareId = rawId.replace(/^(DQ[-_]?)+/i, '');
+              const cleanId = bareId ? `DQ-${bareId}` : rawId;
+
+              cachedJobsData = null; // bust cache
+
+              const isCompleted = completed || (status && (status.toLowerCase().includes('completed') || status.toLowerCase().includes('delivered')));
+              const compAt = completedAt || (isCompleted ? new Date().toISOString() : null);
+
+              let query = `UPDATE jobs SET status = $1, completed = $2, completed_at = COALESCE($3, completed_at) WHERE id = $4 OR id = $5 OR id = $6;`;
+              let params: any[] = [status, !!isCompleted, compAt, cleanId, bareId, rawId];
+
+              if (Array.isArray(acceptedBy) && acceptedBy.length > 0) {
+                query = `UPDATE jobs SET status = $1, completed = $2, completed_at = COALESCE($3, completed_at), acceptedby = $7 WHERE id = $4 OR id = $5 OR id = $6;`;
+                params.push(JSON.stringify(acceptedBy));
+              }
+
+              await pgPool.query(query, params);
+
+              if (referenceImage) {
+                await pgPool.query(`UPDATE jobs SET referenceimage = $1 WHERE (id = $2 OR id = $3 OR id = $4) AND (referenceimage IS NULL OR referenceimage = '');`, [referenceImage, cleanId, bareId, rawId]).catch(() => {});
+              }
+
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: true, message: `Job #${cleanId} status updated to ${status}` }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              setNoCacheHeaders(res);
+              return res.end(JSON.stringify({ success: false, message: err.message }));
             }
           });
           return;

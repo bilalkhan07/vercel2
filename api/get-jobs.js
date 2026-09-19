@@ -1,5 +1,4 @@
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://lwcuxohrnrkjyfmszxab.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
+import { getPgPool } from './_db.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -12,21 +11,37 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/jobs?select=*&order=createdAt.desc`, {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-      }
+    const pool = getPgPool();
+    const sqlRes = await pool.query(
+      `SELECT * FROM jobs WHERE status IS NULL OR status != 'Deleted' ORDER BY createdat DESC, created_at DESC`
+    );
+
+    const jobs = (sqlRes.rows || []).map(j => ({
+      id: j.id,
+      service: j.service || j.title || 'Design Request',
+      project: j.project || j.title || 'Design Request',
+      price: Number(j.price) || 399,
+      brief: j.brief || (j.details && j.details.brief) || '',
+      phone: j.phone || j.client_phone || '',
+      whatsapp: j.whatsapp || j.phone || j.client_phone || '',
+      ratio: j.ratio || 'Square (1:1)',
+      referenceImage: j.referenceimage || '',
+      referenceimage: j.referenceimage || '',
+      status: j.status || 'Pending',
+      acceptedBy: Array.isArray(j.acceptedby) ? j.acceptedby : [],
+      completed: !!j.completed,
+      completedAt: j.completedat || j.completed_at || null,
+      createdAt: j.createdat || j.created_at || new Date().toISOString(),
+      time: j.time || 'Just now'
+    }));
+
+    return res.status(200).json({
+      success: true,
+      jobs,
+      count: jobs.length
     });
-
-    if (sbRes.ok) {
-      const jobs = await sbRes.json();
-      return res.status(200).json(Array.isArray(jobs) ? jobs : []);
-    }
-
-    return res.status(200).json([]);
   } catch (err) {
-    console.error('[get-jobs error]:', err);
+    console.error('[get-jobs PostgreSQL error]:', err);
     return res.status(200).json([]);
   }
 }

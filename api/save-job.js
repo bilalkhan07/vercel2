@@ -1,11 +1,9 @@
+import { getPgPool } from './_db.js';
 import webpush from 'web-push';
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BN3PRogrLXTWkDjdv9B0QdDEGuUH5-cNIewJ6KgJ2glQrLgtGng1WocCuqmzrL1-BIdSfNb6SX2Xz0HzsP8Yuhk';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'h4330lk5ygavsVd-_F4zWnzCgUWOKMe-JtYaQ60iqrI';
 const VAPID_SUBJECT = 'mailto:alerts@designquixo.in';
-
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://lwcuxohrnrkjyfmszxab.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
 
 try {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -31,65 +29,74 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Missing job object' });
     }
 
-    const cleanId = (job.id || job.jobId || 'DQ-NEW').toString();
-    const serviceName = job.service || job.project || 'Graphic Design Request';
-    const clientName = job.clientName || job.name || 'Direct Client';
-    const rawPrice = Number(job.price) || 399;
+    const rawId = (job.id || job.jobId || '').toString().trim();
+    const bareId = rawId.replace(/^(DQ[-_]?)+/i, '');
+    const cleanId = bareId ? `DQ-${bareId}` : `DQ-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-    // Save job into Supabase jobs table
-    try {
-      await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify(job)
-      });
-    } catch (sbErr) {
-      console.warn('[save-job] Supabase save error:', sbErr);
-    }
+    const service = job.service || 'Graphic Design';
+    const project = job.project || job.projectName || job.title || 'Design Request';
+    const price = Number(job.price) || 399;
+    const brief = job.brief || '';
+    const phone = job.phone || job.whatsapp || job.client_phone || '';
+    const whatsapp = job.whatsapp || job.phone || job.client_phone || '';
+    const ratio = job.ratio || 'Square (1:1)';
+    const refImg = job.referenceImage || job.referenceimage || job.image || '';
+    const status = job.status || 'Pending';
+    const acceptedBy = Array.isArray(job.acceptedBy) ? job.acceptedBy : [];
+    const completed = !!job.completed;
+    const completedAt = job.completedAt || job.completedat || null;
+    const createdAt = job.createdAt || job.createdat || new Date().toISOString();
+    const time = job.time || 'Just now';
 
-    // Trigger Chrome Push Notification Broadcast
+    const pool = getPgPool();
+    const sql = `
+      INSERT INTO jobs (
+        id, service, project, price, brief, phone, whatsapp, ratio, referenceimage, status, acceptedby, completed, completedat, createdat, time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ON CONFLICT (id) DO UPDATE SET
+        service = EXCLUDED.service,
+        project = EXCLUDED.project,
+        price = EXCLUDED.price,
+        brief = EXCLUDED.brief,
+        phone = EXCLUDED.phone,
+        whatsapp = EXCLUDED.whatsapp,
+        ratio = EXCLUDED.ratio,
+        referenceimage = EXCLUDED.referenceimage,
+        status = EXCLUDED.status,
+        acceptedby = EXCLUDED.acceptedby,
+        completed = EXCLUDED.completed,
+        completedat = EXCLUDED.completedat,
+        time = EXCLUDED.time;
+    `;
+
+    await pool.query(sql, [
+      cleanId, service, project, price, brief, phone, whatsapp, ratio, refImg, status,
+      JSON.stringify(acceptedBy), completed, completedAt, createdAt, time
+    ]);
+
+    // Push notification trigger
     try {
+      const pushSubRes = await pool.query(`SELECT * FROM push_subscriptions WHERE role = 'designer'`);
+      const subs = pushSubRes.rows || [];
       const pushPayload = JSON.stringify({
         title: '🚨 NEW DESIGN ORDER ALERT',
-        body: `₹${rawPrice} • ${serviceName} | Client: ${clientName}. Tap to claim job!`,
+        body: `₹${price} • ${project} | Tap to view job!`,
         jobId: cleanId,
-        price: rawPrice,
-        url: `/designer-dashboard.html?alertJob=${cleanId}&autoPlay=5`,
-        autoPlay: 5,
-        icon: '/favicon.png',
-        badge: '/favicon.png',
-        vibrate: [300, 150, 300, 150, 300, 150, 300, 150, 300],
-        tag: `job-${cleanId}`,
-        renotify: true,
-        timestamp: Date.now()
+        url: 'https://designquixo.com/dashboard.html'
       });
-
-      const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?select=*`, {
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-      });
-      if (sbRes.ok) {
-        const subscriptions = await sbRes.json();
-        if (Array.isArray(subscriptions)) {
-          for (const subRecord of subscriptions) {
-            const subObj = subRecord.subscription || subRecord;
-            if (subObj && subObj.endpoint) {
-              webpush.sendNotification(subObj, pushPayload, { TTL: 86400, urgency: 'high' }).catch(() => {});
-            }
+      subs.forEach(row => {
+        try {
+          const subObj = typeof row.subscription === 'string' ? JSON.parse(row.subscription) : row.subscription;
+          if (subObj && subObj.endpoint) {
+            webpush.sendNotification(subObj, pushPayload).catch(() => {});
           }
-        }
-      }
-    } catch (pErr) {
-      console.warn('[save-job] Push broadcast note:', pErr);
-    }
+        } catch(e) {}
+      });
+    } catch(pushErr) {}
 
-    return res.status(200).json({ success: true, message: 'Job saved & Chrome push notification broadcasted successfully' });
+    return res.status(200).json({ success: true, id: cleanId, message: 'Job saved to PostgreSQL successfully' });
   } catch (err) {
-    console.error('[save-job error]:', err);
-    return res.status(500).json({ success: false, message: err.message || 'Internal Error' });
+    console.error('[save-job PostgreSQL error]:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Error saving job' });
   }
 }
