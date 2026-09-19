@@ -1060,7 +1060,29 @@
           }
         }
 
-        // Redundant direct broadcast call removed because db.saveJob already handles broadcasting internally inside the database service layer
+        // Dispatch Chrome Push Notification Broadcast & Email Alerts to all designers/admin
+        try {
+          fetch('/api/trigger-push-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: '🚨 NEW DESIGN ORDER ALERT',
+              body: `₹${servicePrice} • ${serviceName} | Client: ${clientName}. Tap to open workstation & claim!`,
+              jobId: jobId,
+              price: servicePrice,
+              service: serviceName,
+              autoPlay: 5
+            })
+          }).catch(err => console.warn('[request.html] Push trigger note:', err));
+
+          fetch('/api/notify-new-job', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job: newJobObj })
+          }).catch(err => console.warn('[request.html] Email notify note:', err));
+        } catch (pushErr) {
+          console.warn('[request.html] Broadcast push dispatch error:', pushErr);
+        }
 
         // Local storage backup & cross-tab sound alert
         try {

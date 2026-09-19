@@ -2316,9 +2316,7 @@ async function startServer() {
       } else {
         next();
       }
-
     });
-    app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));

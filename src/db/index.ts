@@ -8,13 +8,19 @@ let dbClient: ReturnType<typeof drizzle> | null = null;
 
 export function getDb() {
   if (!dbClient) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      console.warn('[Cloud SQL] DATABASE_URL missing');
-    }
-    const pool = new Pool({
-      connectionString: connectionString || 'postgresql://postgres:postgres@localhost:5432/postgres',
-    });
+    const poolConfig = process.env.DATABASE_URL
+      ? { connectionString: process.env.DATABASE_URL }
+      : process.env.SQL_HOST
+      ? {
+          host: process.env.SQL_HOST,
+          user: process.env.SQL_USER,
+          password: process.env.SQL_PASSWORD,
+          database: process.env.SQL_DB_NAME,
+        }
+      : {
+          connectionString: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        };
+    const pool = new Pool(poolConfig);
     dbClient = drizzle(pool, { schema });
   }
   return dbClient;

@@ -154,11 +154,41 @@
           timestamp: Date.now()
         };
 
-        await fetch('/api/push-subscribe', {
+        // 1. Save to Vercel Serverless Function
+        fetch('/api/push-subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-        });
+        }).catch(() => {});
+
+        // 2. Direct Supabase push_subscriptions table upsert
+        try {
+          const db = window.DQSupabase || window.DQFirebase;
+          const SUPABASE_URL = (db && db.url) ? db.url : 'https://lwcuxohrnrkjyfmszxab.supabase.co';
+          const SUPABASE_ANON_KEY = (db && db.key) ? db.key : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3Y3V4b2hybnJranlmbXN6eGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTY3ODUsImV4cCI6MjEwNDk5Mjc4NX0.erJAwyIU6qmjyTUf_6cXhYRd2dd9P2IkAJsQWK_SrGo';
+
+          const endpointHash = btoa(subscription.endpoint).replace(/[^a-zA-Z0-9]/g, '').slice(-40);
+          const subRecord = {
+            id: endpointHash,
+            endpoint: subscription.endpoint,
+            subscription: subscription,
+            role: payload.role,
+            identifier: payload.identifier,
+            name: payload.name,
+            updated_at: new Date().toISOString()
+          };
+
+          fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'resolution=merge-duplicates'
+            },
+            body: JSON.stringify(subRecord)
+          }).catch(() => {});
+        } catch(sbErr) {}
       } catch (e) {
         console.warn('[DQPush] Sync subscription error:', e);
       }
