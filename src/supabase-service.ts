@@ -338,12 +338,17 @@ export async function safeUpsertDesigner(designer: any): Promise<{ success: bool
   };
 
   try {
-    fetch('/api/register-designer', {
+    const regRes = await fetch('/api/register-designer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(lowercasePayload)
-    }).catch(() => {});
-  } catch (e) {}
+    });
+    if (regRes.ok) {
+      return { success: true };
+    }
+  } catch (e) {
+    console.warn('PostgreSQL register-designer notice:', e);
+  }
 
   return pruneMissingColumnsAndUpsert('designers', lowercasePayload);
 }
@@ -432,49 +437,23 @@ export const DQSupabase = {
     };
 
     try {
-      // Backend server persistence
-      fetch('/api/save-job', {
+      // Backend server persistence (PostgreSQL authoritative storage)
+      const saveRes = await fetch('/api/save-job', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(normalizedJob)
-      }).catch(() => {});
-
-      // Direct lowercase upsert to avoid schema caching issues or multi-part uploads
-      const { error } = await supabase.from('jobs').upsert(lowercasePayload);
-      if (error) {
-        console.warn('Upsert jobs with lowercasePayload failed, trying REST fallback:', error.message);
-        try {
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'resolution=merge-duplicates,return=representation'
-            },
-            body: JSON.stringify(lowercasePayload)
-          });
-          if (!res.ok) {
-            const txt = await res.text();
-            console.error('REST fallback for job upsert failed:', txt);
-          }
-        } catch (e) {}
+      });
+      if (saveRes.ok) {
+        // Successfully saved directly to PostgreSQL!
       }
     } catch (err) {
-      console.error('Supabase job save exception, trying REST fallback:', err);
-      try {
-        await fetch(`${SUPABASE_URL}/rest/v1/jobs`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'resolution=merge-duplicates,return=representation'
-          },
-          body: JSON.stringify(lowercasePayload)
-        });
-      } catch (e) {}
+      console.warn('Backend PostgreSQL save-job notice:', err);
     }
+
+    // Optional background sync to Supabase without blocking UI
+    try {
+      (supabase.from('jobs').upsert(lowercasePayload) as any).then(null, () => {});
+    } catch (e) {}
 
     // 3. Asynchronously broadcast new job email alert to all registered designers
     try {
@@ -594,61 +573,27 @@ export const DQSupabase = {
     }
 
     try {
-      // Direct lowercase update matching PostgreSQL schema
-      const resId = await supabase.from('jobs').update(lowerPayload).eq('id', cleanId);
-      const resBare = await supabase.from('jobs').update(lowerPayload).eq('id', bareId);
-      
-      if (resId.error || resBare.error) {
-        console.warn('Update job with lowercasePayload failed, trying REST fallback:', resId.error?.message || resBare.error?.message);
-        // Fallback REST API PATCH with lowercase
-        try {
-          await Promise.allSettled([
-            fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${cleanId}`, {
-              method: 'PATCH',
-              headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(lowerPayload)
-            }),
-            fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${bareId}`, {
-              method: 'PATCH',
-              headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(lowerPayload)
-            })
-          ]);
-        } catch (e) {}
-      }
+      // Direct PostgreSQL backend update
+      await fetch('/api/update-job-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: cleanId,
+          status: newStatus,
+          acceptedBy: lowerPayload.acceptedby,
+          completed: lowerPayload.completed,
+          completedAt: lowerPayload.completedat,
+          referenceImage: refImg
+        })
+      });
     } catch (err) {
-      console.error('Supabase update job exception, trying REST fallback:', err);
-      try {
-        await Promise.allSettled([
-          fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${cleanId}`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(lowerPayload)
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/jobs?id=eq.${bareId}`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(lowerPayload)
-          })
-        ]);
-      } catch (e) {}
+      console.warn('Backend PostgreSQL update-job-status notice:', err);
     }
+
+    // Optional background sync to Supabase without blocking UI
+    try {
+      (supabase.from('jobs').update(lowerPayload).eq('id', cleanId) as any).then(null, () => {});
+    } catch (e) {}
   },
 
   async claimJob(jobId: string, designerPhone: string, designerName: string): Promise<boolean> {
@@ -770,25 +715,12 @@ export const DQSupabase = {
         }
       } catch (err) {}
 
-      // 2. Direct REST API fetch fallback if server API was unreachable
+      // 2. Local cache fallback if server API was temporarily unreachable
       if (data === null) {
         try {
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/jobs?select=*&status=neq.Deleted&order=createdat.desc`, {
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
-            },
-            cache: 'no-store'
-          });
-          if (res.ok) {
-            data = await res.json();
-          }
-        } catch (err) {
-          const fallback = await supabase.from('jobs').select('*').neq('status', 'Deleted');
-          data = fallback.data || [];
-          error = fallback.error;
+          data = JSON.parse(safeStorage.getItem('dq_live_jobs') || '[]');
+        } catch (e) {
+          data = [];
         }
       }
 
@@ -1039,81 +971,27 @@ export const DQSupabase = {
       console.warn('LocalStorage status update failed:', e);
     }
 
-    // Resilient database ID lookup
-    let exactDbId = cleanKey;
+    // 1. Authoritative PostgreSQL status update
     try {
-      const { data } = await supabase.from('designers').select('*');
-      if (Array.isArray(data)) {
-        const match = data.find((d: any) => 
-          (isEmail && d.email && d.email.toLowerCase() === cleanKey) ||
-          (phone10 && clean10Phone(d.phone || d.id || d.identifier) === phone10) ||
-          (d.identifier && d.identifier.toLowerCase() === cleanKey) ||
-          (d.id && d.id.toLowerCase() === cleanKey)
-        );
-        if (match) {
-          exactDbId = match.id;
-        }
+      const srvRes = await fetch('/api/update-designer-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: cleanKey, status })
+      });
+      if (srvRes.ok) {
+        // Fast return on PostgreSQL success
+        return { success: true };
       }
+    } catch (srvErr) {
+      console.warn('Server /api/update-designer-status notice:', srvErr);
+    }
+
+    // 2. Background sync fallback
+    try {
+      (supabase.from('designers').update({ status }).eq('id', cleanKey) as any).then(null, () => {});
     } catch (e) {}
 
-    try {
-      const updatePayload: any = { status: status };
-      const { error } = await supabase.from('designers').update(updatePayload).eq('id', exactDbId);
-      
-      let restPromises = [];
-      restPromises.push(
-        fetch(`${SUPABASE_URL}/rest/v1/designers?id=eq.${encodeURIComponent(exactDbId)}`, {
-          method: 'PATCH',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status })
-        })
-      );
-      if (isEmail) {
-        restPromises.push(
-          fetch(`${SUPABASE_URL}/rest/v1/designers?identifier=eq.${encodeURIComponent(cleanKey)}`, {
-            method: 'PATCH',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status })
-          })
-        );
-        try {
-          await supabase.from('designers').update(updatePayload).eq('identifier', cleanKey);
-        } catch (e) {
-          console.warn('Silent skip of .eq("identifier") fallback on status update:', e);
-        }
-      } else if (phone10) {
-        restPromises.push(
-          fetch(`${SUPABASE_URL}/rest/v1/designers?phone=eq.${phone10}`, {
-            method: 'PATCH',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status })
-          })
-        );
-        try {
-          await supabase.from('designers').update(updatePayload).eq('phone', phone10);
-        } catch (e) {
-          console.warn('Silent skip of .eq("phone") fallback on status update:', e);
-        }
-      }
-      
-      await Promise.allSettled(restPromises);
-
-      // Server-side status synchronization (fail-safe)
-      try {
-        await fetch('/api/update-designer-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: cleanKey, status })
-        });
-      } catch (srvErr) {
-        console.warn('Server /api/update-designer-status call notice:', srvErr);
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      console.warn('Supabase update designer exception:', err);
-      return { success: false, error: err.message || String(err) };
-    }
+    return { success: true };
   },
 
   async updateDesignerPassword(key: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
@@ -1153,43 +1031,26 @@ export const DQSupabase = {
       console.warn('LocalStorage password update notice:', e);
     }
 
-    // 2. Lookup DB record ID and update in Supabase
-    let exactDbId = cleanKey;
+    // 2. Authoritative PostgreSQL password update
     try {
-      const { data } = await supabase.from('designers').select('*');
-      if (Array.isArray(data)) {
-        const match = data.find((d: any) => 
-          (isEmail && d.email && d.email.toLowerCase() === cleanKey) ||
-          (phone10 && clean10Phone(d.phone || d.id || d.identifier) === phone10) ||
-          (d.identifier && d.identifier.toLowerCase() === cleanKey) ||
-          (d.id && d.id.toLowerCase() === cleanKey)
-        );
-        if (match) exactDbId = match.id;
+      const res = await fetch('/api/update-designer-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: cleanKey, newPassword: passStr })
+      });
+      if (res.ok) {
+        return { success: true };
       }
+    } catch (e) {
+      console.warn('PostgreSQL update-designer-password notice:', e);
+    }
+
+    // Optional background sync
+    try {
+      (supabase.from('designers').update({ password: passStr }).eq('id', cleanKey) as any).then(null, () => {});
     } catch (e) {}
 
-    try {
-      await supabase.from('designers').update({ password: passStr }).eq('id', exactDbId);
-      if (phone10) {
-        try { await supabase.from('designers').update({ password: passStr }).eq('phone', phone10); } catch(e) {}
-      }
-      if (isEmail) {
-        try { await supabase.from('designers').update({ password: passStr }).eq('email', cleanKey); } catch(e) {}
-      }
-      // Trigger API route to ensure server persistence
-      try {
-        fetch('/api/update-designer-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: cleanKey, newPassword: passStr })
-        }).catch(() => {});
-      } catch(e) {}
-
-      return { success: true };
-    } catch (err: any) {
-      console.warn('Supabase password update notice:', err);
-      return { success: true }; // Local storage is already updated
-    }
+    return { success: true };
   },
 
   async updateDesignerEmail(oldEmail: string, newEmail: string, phone = ''): Promise<{ success: boolean; message?: string }> {
@@ -1238,23 +1099,26 @@ export const DQSupabase = {
       console.warn('LocalStorage email update notice:', e);
     }
 
-    // 2. Call server route and Supabase directly
+    // 2. Authoritative PostgreSQL email update
     try {
-      if (cleanOld) {
-        await supabase.from('designers').update({ email: cleanNew, identifier: cleanNew }).eq('email', cleanOld);
-      }
-      if (cleanPhone) {
-        await supabase.from('designers').update({ email: cleanNew, identifier: cleanNew }).eq('phone', cleanPhone);
-      }
-    } catch (e) {}
-
-    try {
-      fetch('/api/update-designer-email', {
+      await fetch('/api/update-designer-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ oldEmail: cleanOld, newEmail: cleanNew, phone: cleanPhone })
-      }).catch(() => {});
-    } catch(e) {}
+      });
+    } catch(e) {
+      console.warn('PostgreSQL update-designer-email notice:', e);
+    }
+
+    // Optional background sync to Supabase
+    try {
+      if (cleanOld) {
+        (supabase.from('designers').update({ email: cleanNew, identifier: cleanNew }).eq('email', cleanOld) as any).then(null, () => {});
+      }
+      if (cleanPhone) {
+        (supabase.from('designers').update({ email: cleanNew, identifier: cleanNew }).eq('phone', cleanPhone) as any).then(null, () => {});
+      }
+    } catch (e) {}
 
     return { success: true, message: 'Email updated successfully!' };
   },
@@ -1303,66 +1167,21 @@ export const DQSupabase = {
       safeStorage.setItem('dq_session_revoke_signal', JSON.stringify({ key: cleanKey, time: Date.now() }));
     } catch (e) {}
 
-    // Resilient database ID lookup to handle custom formats in DB
-    let exactDbId = cleanKey; // Default fallback
+    // Authoritative PostgreSQL deletion via backend route
     try {
-      const { data } = await supabase.from('designers').select('*');
-      if (Array.isArray(data)) {
-        const match = data.find((d: any) => 
-          (isEmail && d.email && d.email.toLowerCase() === cleanKey) ||
-          (phone10 && clean10Phone(d.phone || d.id || d.identifier) === phone10) ||
-          (d.identifier && d.identifier.toLowerCase() === cleanKey) ||
-          (d.id && d.id.toLowerCase() === cleanKey)
-        );
-        if (match) {
-          exactDbId = match.id;
-        }
-      }
-    } catch (e) {}
-
-    // Supabase delete - direct REST API call across id, phone, identifier
-    try {
-      const deletePromises = [];
-      deletePromises.push(
-        fetch(`${SUPABASE_URL}/rest/v1/designers?id=eq.${encodeURIComponent(exactDbId)}`, {
-          method: 'DELETE',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-        })
-      );
-      if (isEmail) {
-        deletePromises.push(
-          fetch(`${SUPABASE_URL}/rest/v1/designers?identifier=eq.${encodeURIComponent(cleanKey)}`, {
-            method: 'DELETE',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-          })
-        );
-        try {
-          await supabase.from('designers').delete().eq('identifier', cleanKey);
-        } catch (e) {}
-      } else if (phone10) {
-        deletePromises.push(
-          fetch(`${SUPABASE_URL}/rest/v1/designers?phone=eq.${phone10}`, {
-            method: 'DELETE',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-          }),
-          fetch(`${SUPABASE_URL}/rest/v1/designers?identifier=eq.${phone10}`, {
-            method: 'DELETE',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-          })
-        );
-        try {
-          await supabase.from('designers').delete().eq('phone', phone10);
-        } catch (e) {}
-        try {
-          await supabase.from('designers').delete().eq('identifier', phone10);
-        } catch (e) {}
-      }
-
-      await Promise.allSettled(deletePromises);
-      await supabase.from('designers').delete().eq('id', exactDbId);
+      await fetch('/api/delete-designer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: cleanKey })
+      });
     } catch (err) {
-      console.warn('Supabase delete designer exception:', err);
+      console.warn('PostgreSQL delete-designer notice:', err);
     }
+
+    // Optional background sync to Supabase without blocking UI
+    try {
+      (supabase.from('designers').delete().eq('id', cleanKey) as any).then(null, () => {});
+    } catch (err) {}
   },
 
   async clearAllDesigners(): Promise<void> {
@@ -1386,20 +1205,32 @@ export const DQSupabase = {
 
   async fetchDesigners(): Promise<DQDesigner[]> {
     try {
-      // Direct REST API fetch for maximum reliability
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/designers?select=*`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        },
-        cache: 'no-store'
-      });
+      // Authoritative PostgreSQL fetch via direct server API
       let data: any[] = [];
-      if (res.ok) {
-        data = await res.json();
-      } else {
-        const sdkRes = await supabase.from('designers').select('*');
-        data = sdkRes.data || [];
+      try {
+        const res = await fetch('/api/get-designers', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          },
+          cache: 'no-store'
+        });
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}));
+          if (json && Array.isArray(json.designers)) {
+            data = json.designers;
+          }
+        }
+      } catch (e) {
+        console.warn('Fetch designers from PostgreSQL API error:', e);
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        try {
+          data = JSON.parse(safeStorage.getItem('dq_registered_designers') || '[]');
+        } catch (e) {
+          data = [];
+        }
       }
 
       if (Array.isArray(data)) {
